@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { productsApi, categoriesApi, Product, Category } from "@/lib/api";
+import { productsApi, categoriesApi, shoppingListApi, Product, Category, ShoppingListItem } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle } from "lucide-react";
+import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle, ShoppingCart, MinusCircle } from "lucide-react";
 
 interface ProductFormData {
   name: string;
   category_id: string;
+  new_category_name: string;
   current_stock: string;
   min_threshold: string;
   unit: string;
@@ -24,12 +25,15 @@ interface ProductFormData {
 const defaultForm: ProductFormData = {
   name: "",
   category_id: "",
+  new_category_name: "",
   current_stock: "0",
   min_threshold: "0",
   unit: "count",
   buying_frequency: "none",
   expiration_date: "",
 };
+
+const NEW_CATEGORY_VALUE = "__new__";
 
 export default function Inventory() {
   const queryClient = useQueryClient();
@@ -39,16 +43,35 @@ export default function Inventory() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
+  const [showConsumeDialog, setShowConsumeDialog] = useState(false);
   const [restockQty, setRestockQty] = useState("0");
+  const [consumeQty, setConsumeQty] = useState("1");
   const [form, setForm] = useState<ProductFormData>(defaultForm);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({ queryKey: ["products"], queryFn: () => productsApi.list() });
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["categories"], queryFn: categoriesApi.list });
+  const { data: shoppingList = [] } = useQuery<ShoppingListItem[]>({ queryKey: ["shopping-list"], queryFn: shoppingListApi.get });
+
+  const lowStockCount = products.filter(p => p.status === "low_stock").length;
+  const endedCount = products.filter(p => p.status === "ended").length;
+
+  const createCategoryMutation = useMutation({
+    mutationFn: (name: string) => categoriesApi.create({ name }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["categories"] }),
+  });
 
   const createMutation = useMutation({
-    mutationFn: (data: Partial<Product>) =>
-      editingProduct ? productsApi.update(editingProduct.id, data) : productsApi.create(data),
+    mutationFn: async (data: Partial<Product>) => {
+      let categoryId = data.category_id;
+      if (!categoryId && form.new_category_name.trim()) {
+        const newCat = await createCategoryMutation.mutateAsync(form.new_category_name.trim());
+        categoryId = newCat.id;
+      }
+      return editingProduct
+        ? productsApi.update(editingProduct.id, { ...data, category_id: categoryId })
+        : productsApi.create({ ...data, category_id: categoryId });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
@@ -64,6 +87,16 @@ export default function Inventory() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
       setShowRestockDialog(false);
+      setSelectedProduct(null);
+    },
+  });
+
+  const consumeMutation = useMutation({
+    mutationFn: (id: number) => productsApi.consume(id, { quantity: parseFloat(consumeQty) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
+      setShowConsumeDialog(false);
       setSelectedProduct(null);
     },
   });
@@ -97,6 +130,7 @@ export default function Inventory() {
     setForm({
       name: product.name,
       category_id: String(product.category_id),
+      new_category_name: "",
       current_stock: String(product.current_stock),
       min_threshold: String(product.min_threshold),
       unit: product.unit,
@@ -108,9 +142,10 @@ export default function Inventory() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const categoryId = form.category_id === NEW_CATEGORY_VALUE ? undefined : parseInt(form.category_id);
     createMutation.mutate({
       name: form.name,
-      category_id: parseInt(form.category_id),
+      category_id: categoryId,
       current_stock: parseFloat(form.current_stock),
       min_threshold: parseFloat(form.min_threshold),
       unit: form.unit,
@@ -125,9 +160,46 @@ export default function Inventory() {
     return <Badge variant="success" className="text-xs">OK</Badge>;
   };
 
+  const categoryIcon = (cat?: Category) => cat?.icon ? <span className="mr-1">{cat.icon}</span> : null;
+
   return (
     <div className="p-4 pb-24 space-y-4">
-      <h1 className="text-2xl font-bold">Inventory</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Home</h1>
+        <span className="text-sm text-muted-foreground">{new Date().toLocaleDateString()}</span>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-4 gap-2">
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-3 flex flex-col items-center text-center">
+            <Package className="h-4 w-4 text-blue-600 mb-1" />
+            <p className="text-xl font-bold text-blue-700">{products.length}</p>
+            <p className="text-[10px] text-blue-600">Items</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="p-3 flex flex-col items-center text-center">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 mb-1" />
+            <p className="text-xl font-bold text-yellow-700">{lowStockCount}</p>
+            <p className="text-[10px] text-yellow-600">Low Stock</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-3 flex flex-col items-center text-center">
+            <XCircle className="h-4 w-4 text-red-600 mb-1" />
+            <p className="text-xl font-bold text-red-700">{endedCount}</p>
+            <p className="text-[10px] text-red-600">Ended</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-3 flex flex-col items-center text-center">
+            <ShoppingCart className="h-4 w-4 text-green-600 mb-1" />
+            <p className="text-xl font-bold text-green-700">{shoppingList.length}</p>
+            <p className="text-[10px] text-green-600">To Buy</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Search */}
       <div className="relative">
@@ -160,7 +232,9 @@ export default function Inventory() {
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map(c => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.icon && <span className="mr-1">{c.icon}</span>}{c.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -176,39 +250,44 @@ export default function Inventory() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(product => (
-            <Card
-              key={product.id}
-              className="cursor-pointer active:opacity-80 transition-opacity"
-              onClick={() => setSelectedProduct(product)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">{product.category_name || "Uncategorized"}</p>
+          {filtered.map(product => {
+            const cat = categories.find(c => c.id === product.category_id);
+            return (
+              <Card
+                key={product.id}
+                className="cursor-pointer active:opacity-80 transition-opacity"
+                onClick={() => setSelectedProduct(product)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{product.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {categoryIcon(cat)}{product.category_name || "Uncategorized"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 ml-2">
+                      {statusBadge(product.status)}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 ml-2">
-                    {statusBadge(product.status)}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                    <span>{product.current_stock} {product.unit} remaining</span>
+                    <span>Min: {product.min_threshold} {product.unit}</span>
                   </div>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                  <span>{product.current_stock} {product.unit} remaining</span>
-                  <span>Min: {product.min_threshold} {product.unit}</span>
-                </div>
-                <Progress
-                  value={Math.min((product.current_stock / Math.max(product.min_threshold, 1)) * 100, 100)}
-                  className={`h-1.5 ${product.status === "ended" ? "[&>div]:bg-red-500" : product.status === "low_stock" ? "[&>div]:bg-yellow-500" : "[&>div]:bg-green-500"}`}
-                />
-                {product.expiration_date && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Expires: {new Date(product.expiration_date).toLocaleDateString()}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  <Progress
+                    value={Math.min((product.current_stock / Math.max(product.min_threshold, 1)) * 100, 100)}
+                    className={`h-1.5 ${product.status === "ended" ? "[&>div]:bg-red-500" : product.status === "low_stock" ? "[&>div]:bg-yellow-500" : "[&>div]:bg-green-500"}`}
+                  />
+                  {product.expiration_date && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Expires: {new Date(product.expiration_date).toLocaleDateString()}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -221,7 +300,7 @@ export default function Inventory() {
       </button>
 
       {/* Product Detail Dialog */}
-      <Dialog open={!!selectedProduct && !showRestockDialog} onOpenChange={open => !open && setSelectedProduct(null)}>
+      <Dialog open={!!selectedProduct && !showRestockDialog && !showConsumeDialog} onOpenChange={open => !open && setSelectedProduct(null)}>
         <DialogContent className="max-w-sm">
           {selectedProduct && (
             <>
@@ -247,7 +326,10 @@ export default function Inventory() {
                   </div>
                   <div className="bg-muted rounded-md p-2">
                     <p className="text-xs text-muted-foreground">Category</p>
-                    <p className="font-semibold">{selectedProduct.category_name}</p>
+                    <p className="font-semibold">
+                      {(() => { const cat = categories.find(c => c.id === selectedProduct.category_id); return cat?.icon ? `${cat.icon} ` : ""; })()}
+                      {selectedProduct.category_name}
+                    </p>
                   </div>
                 </div>
                 {selectedProduct.next_purchase_date && (
@@ -257,12 +339,21 @@ export default function Inventory() {
                 )}
               </div>
               <DialogFooter className="flex-col gap-2">
-                <Button
-                  className="w-full"
-                  onClick={() => { setRestockQty(String(selectedProduct.min_threshold * 2)); setShowRestockDialog(true); }}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" /> Restock
-                </Button>
+                <div className="flex gap-2 w-full">
+                  <Button
+                    className="flex-1"
+                    onClick={() => { setRestockQty(String(selectedProduct.min_threshold * 2)); setShowRestockDialog(true); }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" /> Restock
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => { setConsumeQty("1"); setShowConsumeDialog(true); }}
+                  >
+                    <MinusCircle className="h-4 w-4 mr-2" /> Use
+                  </Button>
+                </div>
                 {selectedProduct.status !== "ended" && (
                   <Button
                     variant="destructive"
@@ -313,6 +404,29 @@ export default function Inventory() {
         </DialogContent>
       </Dialog>
 
+      {/* Consume Dialog */}
+      <Dialog open={showConsumeDialog} onOpenChange={setShowConsumeDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Use {selectedProduct?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Label>Amount to remove ({selectedProduct?.unit})</Label>
+            <Input
+              type="number"
+              value={consumeQty}
+              onChange={e => setConsumeQty(e.target.value)}
+              min="0.1"
+              step="0.1"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConsumeDialog(false)}>Cancel</Button>
+            <Button onClick={() => selectedProduct && consumeMutation.mutate(selectedProduct.id)}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add/Edit Product Dialog */}
       <Dialog open={showAddDialog} onOpenChange={open => { if (!open) { setShowAddDialog(false); setEditingProduct(null); } }}>
         <DialogContent className="max-w-sm">
@@ -326,12 +440,29 @@ export default function Inventory() {
             </div>
             <div>
               <Label>Category *</Label>
-              <Select value={form.category_id} onValueChange={v => setForm({...form, category_id: v})}>
+              <Select
+                value={form.category_id}
+                onValueChange={v => setForm({...form, category_id: v, new_category_name: v === NEW_CATEGORY_VALUE ? form.new_category_name : ""})}
+              >
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  {categories.map(c => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.icon && <span className="mr-1">{c.icon}</span>}{c.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={NEW_CATEGORY_VALUE}>+ Create new category</SelectItem>
                 </SelectContent>
               </Select>
+              {form.category_id === NEW_CATEGORY_VALUE && (
+                <Input
+                  className="mt-2"
+                  placeholder="New category name"
+                  value={form.new_category_name}
+                  onChange={e => setForm({...form, new_category_name: e.target.value})}
+                  required
+                />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Package, ShoppingCart } from "lucide-react";
+import { Home, Tag, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { shoppingListApi } from "@/lib/api";
 
@@ -12,8 +12,8 @@ export default function BottomNav() {
   });
 
   const tabs = [
-    { path: "/", label: "Dashboard", icon: Home },
-    { path: "/inventory", label: "Inventory", icon: Package },
+    { path: "/", label: "Home", icon: Home },
+    { path: "/categories", label: "Categories", icon: Tag },
     { path: "/shopping-list", label: "Shopping", icon: ShoppingCart, badge: shoppingList.length },
   ];
 

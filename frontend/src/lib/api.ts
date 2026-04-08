@@ -69,6 +69,8 @@ export const productsApi = {
   delete: (id: number) => api.delete(`/products/${id}`),
   restock: (id: number, data: { new_stock: number; notes?: string }) =>
     api.post<Product>(`/products/${id}/restock`, data).then(r => r.data),
+  consume: (id: number, data: { quantity: number; notes?: string }) =>
+    api.post<Product>(`/products/${id}/consume`, null, { params: data }).then(r => r.data),
   markEnded: (id: number) => api.post<Product>(`/products/${id}/mark-ended`).then(r => r.data),
   getConsumptionRate: (id: number) => api.get(`/products/${id}/consumption-rate`).then(r => r.data),
 };

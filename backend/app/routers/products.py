@@ -172,6 +172,34 @@ def mark_product_ended(
     return _to_read(product)
 
 
+@router.post("/{product_id}/consume", response_model=ProductRead)
+def consume_product(
+    product_id: int,
+    quantity: float = Query(..., description="Amount to remove from stock", gt=0),
+    notes: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    new_stock = max(product.current_stock - quantity, 0.0)
+    quantity_change = new_stock - product.current_stock
+    product.current_stock = new_stock
+    product.status = _compute_status(product)
+
+    log = InventoryLog(
+        product_id=product.id,
+        action=LogAction.consumed,
+        quantity_change=quantity_change,
+        notes=notes or f"Removed {quantity} {product.unit}",
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(product)
+    return _to_read(product)
+
+
 @router.get("/{product_id}/consumption-rate")
 def consumption_rate(product_id: int, db: Session = Depends(get_db)):
     product = db.get(Product, product_id)

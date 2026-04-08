@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import BottomNav from "@/components/layout/BottomNav";
-import Dashboard from "@/pages/Dashboard";
 import Inventory from "@/pages/Inventory";
+import Categories from "@/pages/Categories";
 import ShoppingList from "@/pages/ShoppingList";
 
 const queryClient = new QueryClient({
@@ -15,8 +15,8 @@ export default function App() {
       <BrowserRouter>
         <div className="min-h-screen bg-background max-w-lg mx-auto relative">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/" element={<Inventory />} />
+            <Route path="/categories" element={<Categories />} />
             <Route path="/shopping-list" element={<ShoppingList />} />
           </Routes>
           <BottomNav />

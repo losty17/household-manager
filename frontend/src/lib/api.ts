@@ -5,6 +5,15 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Attach JWT token to every request if present
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Types matching backend schemas
 export interface Category {
   id: number;
@@ -79,4 +88,31 @@ export const shoppingListApi = {
   get: () => api.get<ShoppingListItem[]>("/shopping-list/").then(r => r.data),
   bulkBuy: (productIds: number[]) =>
     api.post("/shopping-list/bulk-buy", { product_ids: productIds }).then(r => r.data),
+};
+
+export interface UserRead {
+  id: number;
+  email: string;
+  created_at: string;
+}
+
+export interface Token {
+  access_token: string;
+  token_type: string;
+}
+
+export const authApi = {
+  register: (email: string, password: string) =>
+    api.post<UserRead>("/auth/register", { email, password }).then(r => r.data),
+  login: (email: string, password: string) => {
+    const form = new URLSearchParams();
+    form.set("username", email);
+    form.set("password", password);
+    return api
+      .post<Token>("/auth/login", form, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      })
+      .then(r => r.data);
+  },
+  me: () => api.get<UserRead>("/auth/me").then(r => r.data),
 };

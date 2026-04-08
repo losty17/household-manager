@@ -464,46 +464,42 @@ export default function Inventory() {
                 />
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Current Stock</Label>
-                <Input type="number" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} min="0" step="0.1" />
-              </div>
-              <div>
-                <Label>Min Threshold</Label>
-                <Input type="number" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} min="0" step="0.1" />
-              </div>
+            <div>
+              <Label>Current Stock</Label>
+              <Input type="number" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} min="0" step="0.1" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Unit</Label>
-                <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="count">count</SelectItem>
-                    <SelectItem value="grams">grams</SelectItem>
-                    <SelectItem value="kg">kg</SelectItem>
-                    <SelectItem value="liters">liters</SelectItem>
-                    <SelectItem value="ml">ml</SelectItem>
-                    <SelectItem value="pieces">pieces</SelectItem>
-                    <SelectItem value="bottles">bottles</SelectItem>
-                    <SelectItem value="boxes">boxes</SelectItem>
-                    <SelectItem value="packs">packs</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Frequency</Label>
-                <Select value={form.buying_frequency} onValueChange={v => setForm({...form, buying_frequency: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label>Min Threshold</Label>
+              <Input type="number" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} min="0" step="0.1" />
+            </div>
+            <div>
+              <Label>Unit</Label>
+              <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="count">count</SelectItem>
+                  <SelectItem value="grams">grams</SelectItem>
+                  <SelectItem value="kg">kg</SelectItem>
+                  <SelectItem value="liters">liters</SelectItem>
+                  <SelectItem value="ml">ml</SelectItem>
+                  <SelectItem value="pieces">pieces</SelectItem>
+                  <SelectItem value="bottles">bottles</SelectItem>
+                  <SelectItem value="boxes">boxes</SelectItem>
+                  <SelectItem value="packs">packs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Frequency</Label>
+              <Select value={form.buying_frequency} onValueChange={v => setForm({...form, buying_frequency: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Expiration Date (optional)</Label>

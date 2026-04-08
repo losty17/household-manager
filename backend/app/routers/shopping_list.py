@@ -1,0 +1,64 @@
+import datetime
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.product import Product, ProductStatus
+from app.models.inventory_log import InventoryLog, LogAction
+from app.schemas.shopping_list import ShoppingListItem
+from app.services.shopping_list import get_shopping_list
+from app.services.analytics import update_next_purchase_date
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/shopping-list", tags=["shopping-list"])
+
+
+class BulkBuyRequest(BaseModel):
+    product_ids: list[int]
+
+
+@router.get("/", response_model=list[ShoppingListItem])
+def shopping_list(db: Session = Depends(get_db)):
+    return get_shopping_list(db)
+
+
+@router.post("/bulk-buy", response_model=list[ShoppingListItem])
+def bulk_buy(payload: BulkBuyRequest, db: Session = Depends(get_db)):
+    # Validate all products exist before making any modifications.
+    products = []
+    not_found = []
+    for product_id in payload.product_ids:
+        product = db.get(Product, product_id)
+        if product:
+            products.append(product)
+        else:
+            not_found.append(product_id)
+
+    if not_found:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Products not found: {not_found}",
+        )
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for product in products:
+        new_stock = product.min_threshold * 2
+        quantity_change = new_stock - product.current_stock
+        product.current_stock = new_stock
+        product.last_purchased = now
+        product.status = (
+            ProductStatus.low_stock
+            if product.current_stock < product.min_threshold
+            else ProductStatus.ok
+        )
+        db.add(
+            InventoryLog(
+                product_id=product.id,
+                action=LogAction.restock,
+                quantity_change=quantity_change,
+                notes="Bulk buy restock",
+            )
+        )
+        update_next_purchase_date(product, db)
+
+    db.commit()
+    return get_shopping_list(db)

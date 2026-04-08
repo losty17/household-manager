@@ -11,3 +11,8 @@ class ShoppingListItem(BaseModel):
     priority: int  # 1=ended, 2=low_stock, 3=due_soon
     reason: str
     suggested_quantity: float
+
+
+class PredictedShoppingListItem(ShoppingListItem):
+    days_until_needed: float  # 0 = needed now, >0 = predicted future need
+    predicted_date: str  # ISO-8601 date string of when the item will be needed

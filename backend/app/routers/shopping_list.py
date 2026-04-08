@@ -1,11 +1,11 @@
 import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.product import Product, ProductStatus
 from app.models.inventory_log import InventoryLog, LogAction
-from app.schemas.shopping_list import ShoppingListItem
-from app.services.shopping_list import get_shopping_list
+from app.schemas.shopping_list import ShoppingListItem, PredictedShoppingListItem
+from app.services.shopping_list import get_shopping_list, predict_shopping_list
 from app.services.analytics import update_next_purchase_date
 from pydantic import BaseModel
 
@@ -19,6 +19,15 @@ class BulkBuyRequest(BaseModel):
 @router.get("/", response_model=list[ShoppingListItem])
 def shopping_list(db: Session = Depends(get_db)):
     return get_shopping_list(db)
+
+
+@router.get("/predict", response_model=list[PredictedShoppingListItem])
+def predict_list(
+    days: int = Query(default=7, ge=1, le=365, description="Number of days to look ahead"),
+    db: Session = Depends(get_db),
+):
+    """Return predicted shopping needs for the next *days* days."""
+    return predict_shopping_list(db, days)
 
 
 @router.post("/bulk-buy", response_model=list[ShoppingListItem])

@@ -1,19 +1,34 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { shoppingListApi, productsApi, ShoppingListItem } from "@/lib/api";
+import { shoppingListApi, productsApi, ShoppingListItem, PredictedShoppingListItem } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Check, CheckSquare, Square, RefreshCw, Package } from "lucide-react";
+import { ShoppingCart, Check, CheckSquare, Square, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
+
+const PREDICT_PERIODS = [
+  { label: "1 Week", days: 7 },
+  { label: "2 Weeks", days: 14 },
+  { label: "1 Month", days: 30 },
+];
 
 export default function ShoppingList() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [boughtItems, setBoughtItems] = useState<Set<number>>(new Set());
+  const [mode, setMode] = useState<"current" | "predict">("current");
+  const [predictDays, setPredictDays] = useState(7);
 
   const { data: items = [], isLoading, refetch } = useQuery({
     queryKey: ["shopping-list"],
     queryFn: shoppingListApi.get,
+    enabled: mode === "current",
+  });
+
+  const { data: predictedItems = [], isLoading: isPredictLoading, refetch: refetchPredict } = useQuery({
+    queryKey: ["shopping-list-predict", predictDays],
+    queryFn: () => shoppingListApi.predict(predictDays),
+    enabled: mode === "predict",
   });
 
   const bulkBuyMutation = useMutation({
@@ -42,6 +57,11 @@ export default function ShoppingList() {
   const lowStockItems = items.filter(i => i.priority === 2);
   const dueSoonItems = items.filter(i => i.priority === 3);
 
+  const predictedUrgent = predictedItems.filter(i => i.priority === 1);
+  const predictedLowStock = predictedItems.filter(i => i.priority === 2);
+  const predictedDueSoon = predictedItems.filter(i => i.priority === 3);
+  const predictedFuture = predictedItems.filter(i => i.priority === 4);
+
   const toggleSelect = (id: number) => {
     setSelected(prev => {
       const next = new Set(prev);
@@ -60,6 +80,7 @@ export default function ShoppingList() {
     1: { label: "Urgent", color: "destructive" as const, bg: "bg-red-50 border-red-200" },
     2: { label: "Low Stock", color: "warning" as const, bg: "bg-yellow-50 border-yellow-200" },
     3: { label: "Due Soon", color: "secondary" as const, bg: "bg-blue-50 border-blue-200" },
+    4: { label: "Predicted", color: "outline" as const, bg: "bg-purple-50 border-purple-200" },
   };
 
   const renderSection = (sectionItems: ShoppingListItem[], priority: 1 | 2 | 3) => {
@@ -114,27 +135,115 @@ export default function ShoppingList() {
     );
   };
 
+  const renderPredictSection = (sectionItems: PredictedShoppingListItem[], priority: 1 | 2 | 3 | 4) => {
+    if (sectionItems.length === 0) return null;
+    const config = priorityConfig[priority];
+    return (
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+          <Badge variant={config.color}>{config.label}</Badge>
+          <span>{sectionItems.length} item{sectionItems.length !== 1 ? 's' : ''}</span>
+        </h3>
+        {sectionItems.map(item => (
+          <Card key={item.product_id} className={config.bg}>
+            <CardContent className="p-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium text-sm truncate">{item.name}</p>
+                    <span className="inline-flex items-center gap-1 text-xs bg-white border rounded-full px-2 py-0.5 text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {item.days_until_needed < 1
+                        ? "today"
+                        : `in ${Math.round(item.days_until_needed)}d`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{item.category_name} • {item.reason}</p>
+                  <p className="text-xs font-medium mt-0.5">
+                    Suggested: <span className="text-primary">{item.suggested_quantity} {item.unit}</span>
+                    {item.current_stock > 0 && (
+                      <span className="text-muted-foreground ml-1">(have {item.current_stock})</span>
+                    )}
+                    <span className="text-muted-foreground ml-1">• by {item.predicted_date}</span>
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+  const loading = mode === "current" ? isLoading : isPredictLoading;
+  const displayItems = mode === "current" ? items : predictedItems;
+
   return (
     <div className="p-4 pb-28 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <ShoppingCart className="h-6 w-6" /> Shopping List
         </h1>
-        <Button variant="ghost" size="sm" onClick={() => refetch()}>
+        <Button variant="ghost" size="sm" onClick={() => mode === "current" ? refetch() : refetchPredict()}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
 
-      {isLoading ? (
+      {/* Mode toggle */}
+      <div className="flex rounded-lg border overflow-hidden">
+        <button
+          onClick={() => setMode("current")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+            mode === "current" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <ShoppingCart className="h-4 w-4" />
+          Current
+        </button>
+        <button
+          onClick={() => setMode("predict")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+            mode === "predict" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <TrendingUp className="h-4 w-4" />
+          Predict
+        </button>
+      </div>
+
+      {/* Period selector (predict mode only) */}
+      {mode === "predict" && (
+        <div className="flex gap-2">
+          {PREDICT_PERIODS.map(period => (
+            <button
+              key={period.days}
+              onClick={() => setPredictDays(period.days)}
+              className={`flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                predictDays === period.days
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-background border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {period.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loading ? (
         <div className="text-center py-12 text-muted-foreground">Loading...</div>
-      ) : items.length === 0 ? (
+      ) : displayItems.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">All stocked up! Nothing to buy right now.</p>
+            <p className="text-muted-foreground">
+              {mode === "current"
+                ? "All stocked up! Nothing to buy right now."
+                : `Nothing predicted to be needed in the next ${predictDays} days.`}
+            </p>
           </CardContent>
         </Card>
-      ) : (
+      ) : mode === "current" ? (
         <>
           {/* Select All / Bulk Buy Bar */}
           <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
@@ -160,6 +269,16 @@ export default function ShoppingList() {
           {renderSection(urgentItems, 1)}
           {renderSection(lowStockItems, 2)}
           {renderSection(dueSoonItems, 3)}
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Showing items predicted to be needed within the next {predictDays} days.
+          </p>
+          {renderPredictSection(predictedUrgent, 1)}
+          {renderPredictSection(predictedLowStock, 2)}
+          {renderPredictSection(predictedDueSoon, 3)}
+          {renderPredictSection(predictedFuture, 4)}
         </>
       )}
     </div>

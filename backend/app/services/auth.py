@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -12,7 +13,13 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.user import User
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    SECRET_KEY = "change-me-in-production"
+    logging.warning(
+        "SECRET_KEY is not set. Using an insecure default. "
+        "Set the SECRET_KEY environment variable before deploying to production."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

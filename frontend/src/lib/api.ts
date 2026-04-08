@@ -44,6 +44,12 @@ export interface ShoppingListItem {
   suggested_quantity: number;
 }
 
+export interface PredictedShoppingListItem extends ShoppingListItem {
+  priority: 1 | 2 | 3 | 4;
+  days_until_needed: number;
+  predicted_date: string;
+}
+
 export interface InventoryLog {
   id: number;
   product_id: number;
@@ -77,6 +83,8 @@ export const productsApi = {
 
 export const shoppingListApi = {
   get: () => api.get<ShoppingListItem[]>("/shopping-list/").then(r => r.data),
+  predict: (days: number) =>
+    api.get<PredictedShoppingListItem[]>("/shopping-list/predict", { params: { days } }).then(r => r.data),
   bulkBuy: (productIds: number[]) =>
     api.post("/shopping-list/bulk-buy", { product_ids: productIds }).then(r => r.data),
 };

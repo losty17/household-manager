@@ -26,6 +26,7 @@ export default function Categories() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [form, setForm] = useState<CategoryFormData>(defaultForm);
+  const [deleteTarget, setDeleteTarget] = useState<{ category: Category; hasProducts: boolean } | null>(null);
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ["categories"],
@@ -110,13 +111,7 @@ export default function Categories() {
                     variant="ghost"
                     size="icon"
                     className="text-red-500"
-                    onClick={() => {
-                      if (cat.product_count > 0) {
-                        alert("Cannot delete a category that has products assigned to it.");
-                        return;
-                      }
-                      if (confirm(`Delete "${cat.name}"?`)) deleteMutation.mutate(cat.id);
-                    }}
+                    onClick={() => setDeleteTarget({ category: cat, hasProducts: cat.product_count > 0 })}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -130,7 +125,7 @@ export default function Categories() {
       {/* FAB */}
       <button
         onClick={openAdd}
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform z-10"
+        className="fixed bottom-24 right-4 h-14 w-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform z-10"
       >
         <Plus className="h-6 w-6" />
       </button>
@@ -183,6 +178,40 @@ export default function Categories() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {deleteTarget?.hasProducts ? "Cannot Delete Category" : "Delete Category"}
+            </DialogTitle>
+          </DialogHeader>
+          {deleteTarget?.hasProducts ? (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">"{deleteTarget.category.name}"</span> cannot be deleted because it has products assigned to it. Reassign or delete those products first.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete <span className="font-medium text-foreground">"{deleteTarget?.category.name}"</span>? This action cannot be undone.
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              {deleteTarget?.hasProducts ? "OK" : "Cancel"}
+            </Button>
+            {!deleteTarget?.hasProducts && (
+              <Button
+                variant="destructive"
+                onClick={() => { deleteMutation.mutate(deleteTarget!.category.id); setDeleteTarget(null); }}
+                disabled={deleteMutation.isPending}
+              >
+                Delete
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

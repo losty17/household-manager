@@ -1,4 +1,5 @@
 import datetime
+import math
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.models.product import Product, ProductStatus
@@ -239,6 +240,46 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
             npd = _ensure_utc(p.next_purchase_date)
             if npd <= future:
                 days_until = max((npd - today).total_seconds() / 86400, 0.0)
+                seen_ids.add(p.id)
+                reason = (
+                    "Due for repurchase"
+                    if days_until == 0.0
+                    else f"Due for repurchase in {round(days_until)} day(s)"
+                )
+                items.append(make_item(p, 3, reason, days_until))
+
+    # Priority 3 – frequency-based items never purchased (no next_purchase_date)
+    _FREQ_DAYS: dict[str, int] = {
+        "weekly": 7,
+        "bi-weekly": 14,
+        "monthly": 30,
+    }
+    for p in products:
+        if p.id in seen_ids:
+            continue
+        freq_days = _FREQ_DAYS.get(p.buying_frequency.value)
+        if freq_days is None:
+            continue
+        if p.last_purchased is None:
+            # Never purchased through the app – predict it immediately
+            seen_ids.add(p.id)
+            items.append(
+                make_item(
+                    p,
+                    3,
+                    f"Never purchased – scheduled {p.buying_frequency.value}",
+                    0.0,
+                )
+            )
+        else:
+            # next_purchase_date not set or beyond window; find next cycle within window
+            last = _ensure_utc(p.last_purchased)
+            elapsed_days = (today - last).total_seconds() / 86400
+            # Jump directly to the first cycle that is still in the future
+            cycle = max(1, math.ceil(elapsed_days / freq_days))
+            next_buy = last + datetime.timedelta(days=freq_days * cycle)
+            days_until = (next_buy - today).total_seconds() / 86400
+            if 0 <= days_until <= days:
                 seen_ids.add(p.id)
                 reason = (
                     "Due for repurchase"

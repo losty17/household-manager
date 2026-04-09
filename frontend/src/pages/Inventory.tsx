@@ -41,9 +41,10 @@ export default function Inventory() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
   const [showConsumeDialog, setShowConsumeDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [restockQty, setRestockQty] = useState("0");
   const [consumeQty, setConsumeQty] = useState("1");
   const [form, setForm] = useState<ProductFormData>(defaultForm);
@@ -52,6 +53,8 @@ export default function Inventory() {
   const { data: products = [], isLoading } = useQuery<Product[]>({ queryKey: ["products"], queryFn: () => productsApi.list() });
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["categories"], queryFn: categoriesApi.list });
   const { data: shoppingList = [] } = useQuery<ShoppingListItem[]>({ queryKey: ["shopping-list"], queryFn: shoppingListApi.get });
+
+  const selectedProduct = products.find(p => p.id === selectedProductId) ?? null;
 
   const lowStockCount = products.filter(p => p.status === "low_stock").length;
   const endedCount = products.filter(p => p.status === "ended").length;
@@ -87,7 +90,6 @@ export default function Inventory() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
       setShowRestockDialog(false);
-      setSelectedProduct(null);
     },
   });
 
@@ -97,7 +99,6 @@ export default function Inventory() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
       setShowConsumeDialog(false);
-      setSelectedProduct(null);
     },
   });
 
@@ -106,7 +107,6 @@ export default function Inventory() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
-      setSelectedProduct(null);
     },
   });
 
@@ -114,7 +114,7 @@ export default function Inventory() {
     mutationFn: productsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      setSelectedProduct(null);
+      setSelectedProductId(null);
     },
   });
 
@@ -259,7 +259,7 @@ export default function Inventory() {
               <Card
                 key={product.id}
                 className="cursor-pointer active:opacity-80 transition-opacity"
-                onClick={() => setSelectedProduct(product)}
+                onClick={() => setSelectedProductId(product.id)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
@@ -297,13 +297,13 @@ export default function Inventory() {
       {/* FAB */}
       <button
         onClick={() => { setEditingProduct(null); setForm(defaultForm); setShowAddDialog(true); }}
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform z-10"
+        className="fixed bottom-24 right-4 h-14 w-14 rounded-full bg-primary text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform z-10"
       >
         <Plus className="h-6 w-6" />
       </button>
 
       {/* Product Detail Dialog */}
-      <Dialog open={!!selectedProduct && !showRestockDialog && !showConsumeDialog} onOpenChange={open => !open && setSelectedProduct(null)}>
+      <Dialog open={!!selectedProduct && !showRestockDialog && !showConsumeDialog} onOpenChange={open => !open && setSelectedProductId(null)}>
         <DialogContent className="max-w-sm">
           {selectedProduct && (
             <>
@@ -373,7 +373,7 @@ export default function Inventory() {
                   <Button
                     variant="outline"
                     className="flex-1 text-red-500"
-                    onClick={() => { if (confirm("Delete this item?")) deleteMutation.mutate(selectedProduct.id); }}
+                    onClick={() => setShowDeleteDialog(true)}
                   >
                     Delete
                   </Button>
@@ -506,7 +506,12 @@ export default function Inventory() {
             </div>
             <div>
               <Label>Expiration Date (optional)</Label>
-              <Input type="date" value={form.expiration_date} onChange={e => setForm({...form, expiration_date: e.target.value})} />
+              <Input
+                type="date"
+                value={form.expiration_date}
+                onChange={e => setForm({...form, expiration_date: e.target.value})}
+                min={!editingProduct ? new Date().toISOString().split('T')[0] : undefined}
+              />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
@@ -515,6 +520,28 @@ export default function Inventory() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Item</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete <span className="font-medium text-foreground">"{selectedProduct?.name}"</span>? This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => { deleteMutation.mutate(selectedProduct!.id); setShowDeleteDialog(false); }}
+              disabled={deleteMutation.isPending}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -23,6 +23,8 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/household_manager
+      APP_PASSWORD: 12345678
+      SECRET_KEY: test_secret_key
     depends_on:
       db:
         condition: service_healthy

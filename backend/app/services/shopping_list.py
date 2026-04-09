@@ -247,6 +247,49 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                 )
                 items.append(make_item(p, 3, reason, days_until))
 
+    # Priority 3 – frequency-based items never purchased (no next_purchase_date)
+    _FREQ_DAYS: dict[str, int] = {
+        "weekly": 7,
+        "bi-weekly": 14,
+        "monthly": 30,
+    }
+    for p in products:
+        if p.id in seen_ids:
+            continue
+        freq_days = _FREQ_DAYS.get(p.buying_frequency.value, 0)
+        if freq_days == 0:
+            continue
+        if p.last_purchased is None:
+            # Never purchased through the app – predict it immediately
+            seen_ids.add(p.id)
+            items.append(
+                make_item(
+                    p,
+                    3,
+                    f"Never purchased – scheduled {p.buying_frequency.value}",
+                    0.0,
+                )
+            )
+        else:
+            # next_purchase_date not set or beyond window; check multi-cycle
+            last = _ensure_utc(p.last_purchased)
+            cycle = 1
+            while True:
+                next_buy = last + datetime.timedelta(days=freq_days * cycle)
+                days_until = (next_buy - today).total_seconds() / 86400
+                if days_until > days:
+                    break
+                if days_until >= 0:
+                    seen_ids.add(p.id)
+                    reason = (
+                        "Due for repurchase"
+                        if days_until == 0.0
+                        else f"Due for repurchase in {round(days_until)} day(s)"
+                    )
+                    items.append(make_item(p, 3, reason, days_until))
+                    break
+                cycle += 1
+
     # Priority 3 – expiring within prediction window (not already added)
     for p in products:
         if p.id not in seen_ids and p.expiration_date:

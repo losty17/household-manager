@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { adaptColorForDark } from "@/lib/utils";
@@ -130,90 +130,99 @@ export default function Categories() {
         <Plus className="h-6 w-6" />
       </button>
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={open => { if (!open) { setShowDialog(false); setEditingCategory(null); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{editingCategory ? "Edit Category" : "New Category"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <Label>Name *</Label>
-              <Input
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                required
-                placeholder="e.g. Dairy"
-              />
-            </div>
-            <div>
-              <Label>Icon (emoji)</Label>
-              <Input
-                value={form.icon}
-                onChange={e => setForm({ ...form, icon: e.target.value })}
-                placeholder="e.g. 🥛"
-                maxLength={4}
-              />
-            </div>
-            <div>
-              <Label>Color (hex or CSS color)</Label>
-              <div className="flex gap-2 items-center">
+      {/* Add/Edit Drawer */}
+      <Drawer open={showDialog} onOpenChange={open => { if (!open) { setShowDialog(false); setEditingCategory(null); } }}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{editingCategory ? "Edit Category" : "New Category"}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody>
+            <form id="category-form" onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <Label>Name *</Label>
                 <Input
-                  value={form.color}
-                  onChange={e => setForm({ ...form, color: e.target.value })}
-                  placeholder="e.g. #fef3c7"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  required
+                  placeholder="e.g. Dairy"
                 />
-                {form.color && (
-                  <div
-                    className="h-9 w-9 rounded-md border flex-shrink-0"
-                    style={{ backgroundColor: form.color }}
-                  />
-                )}
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={saveMutation.isPending}>
+              <div>
+                <Label>Icon (emoji)</Label>
+                <Input
+                  value={form.icon}
+                  onChange={e => setForm({ ...form, icon: e.target.value })}
+                  placeholder="e.g. 🥛"
+                  maxLength={4}
+                />
+              </div>
+              <div>
+                <Label>Color (hex or CSS color)</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    value={form.color}
+                    onChange={e => setForm({ ...form, color: e.target.value })}
+                    placeholder="e.g. #fef3c7"
+                  />
+                  {form.color && (
+                    <div
+                      className="h-9 w-9 rounded-md border flex-shrink-0"
+                      style={{ backgroundColor: form.color }}
+                    />
+                  )}
+                </div>
+              </div>
+            </form>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setShowDialog(false)}>Cancel</Button>
+              <Button type="submit" form="category-form" className="flex-1" disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? "Saving..." : editingCategory ? "Update" : "Create"}
               </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
+      {/* Delete Confirmation Drawer */}
+      <Drawer open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>
               {deleteTarget?.hasProducts ? "Cannot Delete Category" : "Delete Category"}
-            </DialogTitle>
-          </DialogHeader>
-          {deleteTarget?.hasProducts ? (
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">"{deleteTarget.category.name}"</span> cannot be deleted because it has products assigned to it. Reassign or delete those products first.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete <span className="font-medium text-foreground">"{deleteTarget?.category.name}"</span>? This action cannot be undone.
-            </p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
-              {deleteTarget?.hasProducts ? "OK" : "Cancel"}
-            </Button>
-            {!deleteTarget?.hasProducts && (
-              <Button
-                variant="destructive"
-                onClick={() => { deleteMutation.mutate(deleteTarget!.category.id); setDeleteTarget(null); }}
-                disabled={deleteMutation.isPending}
-              >
-                Delete
-              </Button>
+            </DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody>
+            {deleteTarget?.hasProducts ? (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">"{deleteTarget.category.name}"</span> cannot be deleted because it has products assigned to it. Reassign or delete those products first.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete <span className="font-medium text-foreground">"{deleteTarget?.category.name}"</span>? This action cannot be undone.
+              </p>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>
+                {deleteTarget?.hasProducts ? "OK" : "Cancel"}
+              </Button>
+              {!deleteTarget?.hasProducts && (
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => { deleteMutation.mutate(deleteTarget!.category.id); setDeleteTarget(null); }}
+                  disabled={deleteMutation.isPending}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

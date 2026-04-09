@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
 import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle, ShoppingCart, MinusCircle } from "lucide-react";
 
 interface ProductFormData {
@@ -302,47 +302,49 @@ export default function Inventory() {
         <Plus className="h-6 w-6" />
       </button>
 
-      {/* Product Detail Dialog */}
-      <Dialog open={!!selectedProduct && !showRestockDialog && !showConsumeDialog} onOpenChange={open => !open && setSelectedProductId(null)}>
-        <DialogContent className="max-w-sm">
+      {/* Product Detail Drawer */}
+      <Drawer open={!!selectedProduct && !showRestockDialog && !showConsumeDialog} onOpenChange={open => !open && setSelectedProductId(null)}>
+        <DrawerContent>
           {selectedProduct && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
+              <DrawerHeader>
+                <DrawerTitle className="flex items-center gap-2">
                   {selectedProduct.name}
                   {statusBadge(selectedProduct.status)}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Current Stock</p>
-                    <p className="font-semibold">{selectedProduct.current_stock} {selectedProduct.unit}</p>
+                </DrawerTitle>
+              </DrawerHeader>
+              <DrawerBody>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-muted rounded-md p-2">
+                      <p className="text-xs text-muted-foreground">Current Stock</p>
+                      <p className="font-semibold">{selectedProduct.current_stock} {selectedProduct.unit}</p>
+                    </div>
+                    <div className="bg-muted rounded-md p-2">
+                      <p className="text-xs text-muted-foreground">Min Threshold</p>
+                      <p className="font-semibold">{selectedProduct.min_threshold} {selectedProduct.unit}</p>
+                    </div>
+                    <div className="bg-muted rounded-md p-2">
+                      <p className="text-xs text-muted-foreground">Frequency</p>
+                      <p className="font-semibold capitalize">{selectedProduct.buying_frequency}</p>
+                    </div>
+                    <div className="bg-muted rounded-md p-2">
+                      <p className="text-xs text-muted-foreground">Category</p>
+                      <p className="font-semibold">
+                        {(() => { const cat = categories.find(c => c.id === selectedProduct.category_id); return cat?.icon ? `${cat.icon} ` : ""; })()}
+                        {selectedProduct.category_name}
+                      </p>
+                    </div>
                   </div>
-                  <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Min Threshold</p>
-                    <p className="font-semibold">{selectedProduct.min_threshold} {selectedProduct.unit}</p>
-                  </div>
-                  <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Frequency</p>
-                    <p className="font-semibold capitalize">{selectedProduct.buying_frequency}</p>
-                  </div>
-                  <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Category</p>
-                    <p className="font-semibold">
-                      {(() => { const cat = categories.find(c => c.id === selectedProduct.category_id); return cat?.icon ? `${cat.icon} ` : ""; })()}
-                      {selectedProduct.category_name}
+                  {selectedProduct.next_purchase_date && (
+                    <p className="text-xs text-muted-foreground">
+                      Next purchase: {new Date(selectedProduct.next_purchase_date).toLocaleDateString()}
                     </p>
-                  </div>
+                  )}
                 </div>
-                {selectedProduct.next_purchase_date && (
-                  <p className="text-xs text-muted-foreground">
-                    Next purchase: {new Date(selectedProduct.next_purchase_date).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-              <DialogFooter className="flex-col gap-2">
-                <div className="flex gap-2 w-full">
+              </DrawerBody>
+              <DrawerFooter>
+                <div className="flex gap-2">
                   <Button
                     className="flex-1"
                     onClick={() => { setRestockQty(String(selectedProduct.min_threshold * 2)); setShowRestockDialog(true); }}
@@ -366,7 +368,7 @@ export default function Inventory() {
                     <XCircle className="h-4 w-4 mr-2" /> Mark as Ended
                   </Button>
                 )}
-                <div className="flex gap-2 w-full">
+                <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => openEdit(selectedProduct)}>
                     Edit
                   </Button>
@@ -378,172 +380,189 @@ export default function Inventory() {
                     Delete
                   </Button>
                 </div>
-              </DialogFooter>
+              </DrawerFooter>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
-      {/* Restock Dialog */}
-      <Dialog open={showRestockDialog} onOpenChange={setShowRestockDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Restock {selectedProduct?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Label>New Stock Quantity ({selectedProduct?.unit})</Label>
-            <Input
-              type="number"
-              value={restockQty}
-              onChange={e => setRestockQty(e.target.value)}
-              min="0"
-              step="0.1"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRestockDialog(false)}>Cancel</Button>
-            <Button onClick={() => selectedProduct && restockMutation.mutate(selectedProduct.id)}>
-              Confirm Restock
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Consume Dialog */}
-      <Dialog open={showConsumeDialog} onOpenChange={setShowConsumeDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Use {selectedProduct?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Label>Amount to remove ({selectedProduct?.unit})</Label>
-            <Input
-              type="number"
-              value={consumeQty}
-              onChange={e => setConsumeQty(e.target.value)}
-              min="0.1"
-              step="0.1"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConsumeDialog(false)}>Cancel</Button>
-            <Button onClick={() => selectedProduct && consumeMutation.mutate(selectedProduct.id)}>
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add/Edit Product Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={open => { if (!open) { setShowAddDialog(false); setEditingProduct(null); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <Label>Name *</Label>
-              <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required placeholder="e.g. Olive Oil" />
-            </div>
-            <div>
-              <Label>Category *</Label>
-              <Select
-                value={form.category_id}
-                onValueChange={v => setForm({...form, category_id: v, new_category_name: v === NEW_CATEGORY_VALUE ? form.new_category_name : ""})}
-              >
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map(c => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.icon && <span className="mr-1">{c.icon}</span>}{c.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={NEW_CATEGORY_VALUE}>+ Create new category</SelectItem>
-                </SelectContent>
-              </Select>
-              {form.category_id === NEW_CATEGORY_VALUE && (
-                <Input
-                  className="mt-2"
-                  placeholder="New category name"
-                  value={form.new_category_name}
-                  onChange={e => setForm({...form, new_category_name: e.target.value})}
-                  required
-                />
-              )}
-            </div>
-            <div>
-              <Label>Current Stock</Label>
-              <Input type="number" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} min="0" step="0.1" />
-            </div>
-            <div>
-              <Label>Min Threshold</Label>
-              <Input type="number" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} min="0" step="0.1" />
-            </div>
-            <div>
-              <Label>Unit</Label>
-              <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="count">count</SelectItem>
-                  <SelectItem value="grams">grams</SelectItem>
-                  <SelectItem value="kg">kg</SelectItem>
-                  <SelectItem value="liters">liters</SelectItem>
-                  <SelectItem value="ml">ml</SelectItem>
-                  <SelectItem value="pieces">pieces</SelectItem>
-                  <SelectItem value="bottles">bottles</SelectItem>
-                  <SelectItem value="boxes">boxes</SelectItem>
-                  <SelectItem value="packs">packs</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Frequency</Label>
-              <Select value={form.buying_frequency} onValueChange={v => setForm({...form, buying_frequency: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Expiration Date (optional)</Label>
+      {/* Restock Drawer */}
+      <Drawer open={showRestockDialog} onOpenChange={setShowRestockDialog}>
+        <DrawerContent>
+          <DrawerHeader><DrawerTitle>Restock {selectedProduct?.name}</DrawerTitle></DrawerHeader>
+          <DrawerBody>
+            <div className="space-y-3">
+              <Label>New Stock Quantity ({selectedProduct?.unit})</Label>
               <Input
-                type="date"
-                value={form.expiration_date}
-                onChange={e => setForm({...form, expiration_date: e.target.value})}
-                min={!editingProduct ? new Date().toISOString().split('T')[0] : undefined}
+                type="number"
+                value={restockQty}
+                onChange={e => setRestockQty(e.target.value)}
+                min="0"
+                step="0.1"
               />
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMutation.isPending}>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowRestockDialog(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={() => selectedProduct && restockMutation.mutate(selectedProduct.id)}>
+                Confirm Restock
+              </Button>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Consume Drawer */}
+      <Drawer open={showConsumeDialog} onOpenChange={setShowConsumeDialog}>
+        <DrawerContent>
+          <DrawerHeader><DrawerTitle>Use {selectedProduct?.name}</DrawerTitle></DrawerHeader>
+          <DrawerBody>
+            <div className="space-y-3">
+              <Label>Amount to remove ({selectedProduct?.unit})</Label>
+              <Input
+                type="number"
+                value={consumeQty}
+                onChange={e => setConsumeQty(e.target.value)}
+                min="0.1"
+                step="0.1"
+              />
+            </div>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowConsumeDialog(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={() => selectedProduct && consumeMutation.mutate(selectedProduct.id)}>
+                Confirm
+              </Button>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Add/Edit Product Drawer */}
+      <Drawer open={showAddDialog} onOpenChange={open => { if (!open) { setShowAddDialog(false); setEditingProduct(null); } }}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody>
+            <form id="product-form" onSubmit={handleSubmit} className="space-y-3 pb-2">
+              <div>
+                <Label>Name *</Label>
+                <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required placeholder="e.g. Olive Oil" />
+              </div>
+              <div>
+                <Label>Category *</Label>
+                <Select
+                  value={form.category_id}
+                  onValueChange={v => setForm({...form, category_id: v, new_category_name: v === NEW_CATEGORY_VALUE ? form.new_category_name : ""})}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.icon && <span className="mr-1">{c.icon}</span>}{c.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={NEW_CATEGORY_VALUE}>+ Create new category</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.category_id === NEW_CATEGORY_VALUE && (
+                  <Input
+                    className="mt-2"
+                    placeholder="New category name"
+                    value={form.new_category_name}
+                    onChange={e => setForm({...form, new_category_name: e.target.value})}
+                    required
+                  />
+                )}
+              </div>
+              <div>
+                <Label>Current Stock</Label>
+                <Input type="number" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} min="0" step="0.1" />
+              </div>
+              <div>
+                <Label>Min Threshold</Label>
+                <Input type="number" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} min="0" step="0.1" />
+              </div>
+              <div>
+                <Label>Unit</Label>
+                <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="count">count</SelectItem>
+                    <SelectItem value="grams">grams</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                    <SelectItem value="liters">liters</SelectItem>
+                    <SelectItem value="ml">ml</SelectItem>
+                    <SelectItem value="pieces">pieces</SelectItem>
+                    <SelectItem value="bottles">bottles</SelectItem>
+                    <SelectItem value="boxes">boxes</SelectItem>
+                    <SelectItem value="packs">packs</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Frequency</Label>
+                <Select value={form.buying_frequency} onValueChange={v => setForm({...form, buying_frequency: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Expiration Date (optional)</Label>
+                <Input
+                  type="date"
+                  value={form.expiration_date}
+                  onChange={e => setForm({...form, expiration_date: e.target.value})}
+                  min={!editingProduct ? new Date().toISOString().split('T')[0] : undefined}
+                />
+              </div>
+            </form>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+              <Button type="submit" form="product-form" className="flex-1" disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Saving..." : editingProduct ? "Update" : "Add Product"}
               </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Item</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete <span className="font-medium text-foreground">"{selectedProduct?.name}"</span>? This action cannot be undone.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={() => { deleteMutation.mutate(selectedProduct!.id); setShowDeleteDialog(false); }}
-              disabled={deleteMutation.isPending}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Confirmation Drawer */}
+      <Drawer open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Delete Item</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete <span className="font-medium text-foreground">"{selectedProduct?.name}"</span>? This action cannot be undone.
+            </p>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => { deleteMutation.mutate(selectedProduct!.id); setShowDeleteDialog(false); }}
+                disabled={deleteMutation.isPending}
+              >
+                Delete
+              </Button>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

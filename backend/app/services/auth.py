@@ -1,4 +1,5 @@
 import os
+import hmac
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -30,7 +31,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def verify_app_password(plain: str) -> bool:
-    return bool(APP_PASSWORD) and plain == APP_PASSWORD
+    # Use constant-time comparison to prevent timing attacks
+    return bool(APP_PASSWORD) and hmac.compare_digest(plain, APP_PASSWORD)
 
 
 def create_access_token(expires_delta: Optional[timedelta] = None) -> str:

@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Failed to restore session:", err);
         localStorage.removeItem("access_token");
+        setIsAuthenticated(false);
       })
       .finally(() => setLoading(false));
   }, []);

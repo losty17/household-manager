@@ -105,8 +105,10 @@ export interface Token {
 
 export const authApi = {
   login: (password: string) => {
+    // The OAuth2 password form requires a username field; the backend ignores it.
+    const AUTH_USERNAME = "owner";
     const form = new URLSearchParams();
-    form.set("username", "owner");
+    form.set("username", AUTH_USERNAME);
     form.set("password", password);
     return api
       .post<Token>("/auth/login", form, {

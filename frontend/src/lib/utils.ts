@@ -47,6 +47,10 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${[r, g, b].map(v => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
+const DARK_MIN_LIGHTNESS = 0.18;
+const DARK_LIGHTNESS_FACTOR = 0.45;
+const DARK_SATURATION_FACTOR = 0.8;
+
 /**
  * Adapts a category hex color for dark mode by darkening it and slightly
  * reducing saturation so it sits comfortably on a dark background.
@@ -56,7 +60,7 @@ export function adaptColorForDark(color: string, isDark: boolean): string {
   const rgb = hexToRgb(color);
   if (!rgb) return color;
   const [h, s, l] = rgbToHsl(...rgb);
-  const darkL = Math.max(0.18, l * 0.45);
-  const darkS = Math.min(s, s * 0.8);
+  const darkL = Math.max(DARK_MIN_LIGHTNESS, l * DARK_LIGHTNESS_FACTOR);
+  const darkS = Math.min(s, s * DARK_SATURATION_FACTOR);
   return hslToHex(h, darkS, darkL);
 }

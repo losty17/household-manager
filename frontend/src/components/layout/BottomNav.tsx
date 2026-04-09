@@ -1,13 +1,10 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Tag, ShoppingCart, LogOut } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Home, Tag, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { shoppingListApi } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function BottomNav() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
   const { data: shoppingList = [] } = useQuery({
     queryKey: ["shopping-list"],
     queryFn: shoppingListApi.get,
@@ -19,11 +16,6 @@ export default function BottomNav() {
     { path: "/categories", label: "Categories", icon: Tag },
     { path: "/shopping-list", label: "Shopping", icon: ShoppingCart, badge: shoppingList.length },
   ];
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-border z-20 pb-safe">
@@ -52,13 +44,6 @@ export default function BottomNav() {
             </Link>
           );
         })}
-        <button
-          onClick={handleLogout}
-          className="flex-1 flex flex-col items-center py-3 gap-0.5 text-xs font-medium text-muted-foreground transition-colors"
-        >
-          <LogOut className="h-6 w-6" />
-          <span>Logout</span>
-        </button>
       </div>
     </nav>
   );

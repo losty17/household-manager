@@ -203,7 +203,7 @@ export default function Inventory() {
       min_threshold: parseFloat(form.min_threshold),
       unit: form.unit,
       buying_frequency: form.buying_frequency as Product["buying_frequency"],
-      expiration_date: form.expiration_date ? brToISO(form.expiration_date) : undefined,
+      expiration_date: form.expiration_date ? (brToISO(form.expiration_date) || undefined) : undefined,
     });
   };
 

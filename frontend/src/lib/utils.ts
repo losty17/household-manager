@@ -40,11 +40,20 @@ export function isoToBR(isoDate: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-/** Converts Brazilian "dd/MM/yyyy" to ISO "yyyy-MM-dd" */
+/** Converts Brazilian "dd/MM/yyyy" to ISO "yyyy-MM-dd". Returns "" for invalid input. */
 export function brToISO(brDate: string): string {
   if (!brDate) return "";
   const parts = brDate.split("/");
   if (parts.length !== 3) return "";
+  const day = Number(parts[0]);
+  const month = Number(parts[1]);
+  const year = Number(parts[2]);
+  if (
+    isNaN(day) || isNaN(month) || isNaN(year) ||
+    day < 1 || day > 31 ||
+    month < 1 || month > 12 ||
+    year < 1000 || year > 9999
+  ) return "";
   return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
 }
 

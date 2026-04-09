@@ -6,6 +6,13 @@ from app.models.inventory_log import InventoryLog, LogAction
 from app.schemas.shopping_list import ShoppingListItem, PredictedShoppingListItem
 
 
+def _ensure_utc(dt: datetime.datetime) -> datetime.datetime:
+    """Return *dt* with UTC timezone attached if it is naive."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=datetime.timezone.utc)
+    return dt
+
+
 def get_shopping_list(db: Session) -> list[ShoppingListItem]:
     products = db.execute(select(Product)).scalars().all()
     today = datetime.datetime.now(datetime.timezone.utc)
@@ -60,12 +67,30 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                 )
             )
 
+    # Priority 2 – already expired (not already added)
+    for p in products:
+        if p.id not in seen_ids and p.expiration_date:
+            exp = _ensure_utc(p.expiration_date)
+            if exp <= today:
+                seen_ids.add(p.id)
+                items.append(
+                    ShoppingListItem(
+                        product_id=p.id,
+                        name=p.name,
+                        category_name=category_name(p),
+                        unit=p.unit,
+                        current_stock=p.current_stock,
+                        min_threshold=p.min_threshold,
+                        priority=2,
+                        reason=f"Expired on {exp.date().isoformat()} - restock needed",
+                        suggested_quantity=suggested_qty(p, 2),
+                    )
+                )
+
     # Priority 3 – due for repurchase
     for p in products:
         if p.id not in seen_ids and p.next_purchase_date:
-            npd = p.next_purchase_date
-            if npd.tzinfo is None:
-                npd = npd.replace(tzinfo=datetime.timezone.utc)
+            npd = _ensure_utc(p.next_purchase_date)
             if npd <= today:
                 seen_ids.add(p.id)
                 items.append(
@@ -112,12 +137,8 @@ def _avg_daily_consumption_bulk(
             restock_time[pid] = log.created_at
             restock_qty[pid] = log.quantity_change
         elif log.action in (LogAction.consumed, LogAction.ended) and pid in restock_time:
-            end_time = log.created_at
-            start_time = restock_time[pid]
-            if end_time.tzinfo is None:
-                end_time = end_time.replace(tzinfo=datetime.timezone.utc)
-            if start_time.tzinfo is None:
-                start_time = start_time.replace(tzinfo=datetime.timezone.utc)
+            end_time = _ensure_utc(log.created_at)
+            start_time = _ensure_utc(restock_time[pid])
             delta = (end_time - start_time).total_seconds() / 86400
             if delta > 0:
                 total_consumed[pid] = total_consumed.get(pid, 0.0) + restock_qty.get(pid, 0.0)
@@ -136,8 +157,10 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
     """Return items predicted to be needed within the next *days* days.
 
     Includes items already on the current shopping list (days_until_needed=0)
-    plus items whose stock is projected to fall below min_threshold or whose
-    next_purchase_date falls within the requested window.
+    plus items whose stock is projected to fall below min_threshold, whose
+    next_purchase_date falls within the requested window, or whose
+    expiration_date falls within the requested window (meaning a restock will
+    be needed after the product expires).
     """
     products = db.execute(select(Product)).scalars().all()
     today = datetime.datetime.now(datetime.timezone.utc)
@@ -195,12 +218,25 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                 )
             )
 
+    # Priority 2 – already expired (not already added)
+    for p in products:
+        if p.id not in seen_ids and p.expiration_date:
+            exp = _ensure_utc(p.expiration_date)
+            if exp <= today:
+                seen_ids.add(p.id)
+                items.append(
+                    make_item(
+                        p,
+                        2,
+                        f"Expired on {exp.date().isoformat()} - restock needed",
+                        0.0,
+                    )
+                )
+
     # Priority 3 – already due for repurchase or due within window
     for p in products:
         if p.id not in seen_ids and p.next_purchase_date:
-            npd = p.next_purchase_date
-            if npd.tzinfo is None:
-                npd = npd.replace(tzinfo=datetime.timezone.utc)
+            npd = _ensure_utc(p.next_purchase_date)
             if npd <= future:
                 days_until = max((npd - today).total_seconds() / 86400, 0.0)
                 seen_ids.add(p.id)
@@ -210,6 +246,22 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                     else f"Due for repurchase in {round(days_until)} day(s)"
                 )
                 items.append(make_item(p, 3, reason, days_until))
+
+    # Priority 3 – expiring within prediction window (not already added)
+    for p in products:
+        if p.id not in seen_ids and p.expiration_date:
+            exp = _ensure_utc(p.expiration_date)
+            if today < exp <= future:
+                days_until = (exp - today).total_seconds() / 86400
+                seen_ids.add(p.id)
+                items.append(
+                    make_item(
+                        p,
+                        3,
+                        f"Expires in {round(days_until)} day(s) on {exp.date().isoformat()} - will need restock",
+                        days_until,
+                    )
+                )
 
     # Priority 4 – consumption-rate projection: stock will run out within window
     remaining_ids = [p.id for p in products if p.id not in seen_ids]

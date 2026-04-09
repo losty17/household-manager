@@ -164,7 +164,7 @@ export default function ShoppingList() {
                     {item.current_stock > 0 && (
                       <span className="text-muted-foreground ml-1">(tem {item.current_stock})</span>
                     )}
-                    <span className="text-muted-foreground ml-1">• em {item.predicted_date}</span>
+                    <span className="text-muted-foreground ml-1">• para {item.predicted_date}</span>
                   </p>
                 </div>
               </div>

@@ -189,7 +189,7 @@ export default function Inventory() {
           <CardContent className="p-3 flex flex-col items-center text-center">
             <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 mb-1" />
             <p className="text-xl font-bold text-red-700 dark:text-red-300">{endedCount}</p>
-            <p className="text-[10px] text-red-600 dark:text-red-400">Esgotados</p>
+            <p className="text-[10px] text-red-600 dark:text-red-400">Esgotado</p>
           </CardContent>
         </Card>
         <Card className="bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-800">

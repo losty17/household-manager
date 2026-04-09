@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
 import { ShoppingCart, Check, CheckSquare, Square, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
 
 const PREDICT_PERIODS = [
@@ -299,68 +299,77 @@ export default function ShoppingList() {
         </>
       )}
 
-      {/* Single item restock dialog */}
-      <Dialog open={restockItem !== null} onOpenChange={(open) => { if (!open) setRestockItem(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>How much did you buy?</DialogTitle>
-            <DialogDescription>
+      {/* Single item restock drawer */}
+      <Drawer open={restockItem !== null} onOpenChange={(open) => { if (!open) setRestockItem(null); }}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>How much did you buy?</DrawerTitle>
+            <DrawerDescription>
               Enter the quantity of <span className="font-medium text-foreground">{restockItem?.name}</span> purchased.
               {restockItem && (
                 <span className="block mt-1">Suggested: {restockItem.suggested_quantity} {restockItem.unit}</span>
               )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={restockQty}
-              onChange={(e) => setRestockQty(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleRestockConfirm();
-              }}
-              className="flex-1"
-              autoFocus
-            />
-            <span className="text-sm text-muted-foreground">{restockItem?.unit}</span>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRestockItem(null)}>Cancel</Button>
-            <Button
-              onClick={handleRestockConfirm}
-              disabled={singleBuyMutation.isPending || !isRestockQtyValid}
-            >
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </DrawerDescription>
+          </DrawerHeader>
+          <DrawerBody>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                step="any"
+                value={restockQty}
+                onChange={(e) => setRestockQty(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRestockConfirm();
+                }}
+                className="flex-1"
+                autoFocus
+              />
+              <span className="text-sm text-muted-foreground">{restockItem?.unit}</span>
+            </div>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setRestockItem(null)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                onClick={handleRestockConfirm}
+                disabled={singleBuyMutation.isPending || !isRestockQtyValid}
+              >
+                Confirm
+              </Button>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
-      {/* Bulk buy confirmation dialog */}
-      <Dialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Bulk Buy</DialogTitle>
-            <DialogDescription>
+      {/* Bulk buy confirmation drawer */}
+      <Drawer open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Confirm Bulk Buy</DrawerTitle>
+            <DrawerDescription>
               Restock {selected.size} item{selected.size !== 1 ? 's' : ''} using their suggested quantities?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBulkConfirm(false)}>Cancel</Button>
-            <Button
-              onClick={() => {
-                bulkBuyMutation.mutate(Array.from(selected));
-                setShowBulkConfirm(false);
-              }}
-              disabled={bulkBuyMutation.isPending}
-            >
-              {bulkBuyMutation.isPending ? "Processing..." : "Confirm"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </DrawerDescription>
+          </DrawerHeader>
+          <DrawerBody />
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowBulkConfirm(false)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  bulkBuyMutation.mutate(Array.from(selected));
+                  setShowBulkConfirm(false);
+                }}
+                disabled={bulkBuyMutation.isPending}
+              >
+                {bulkBuyMutation.isPending ? "Processing..." : "Confirm"}
+              </Button>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

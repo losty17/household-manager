@@ -7,7 +7,6 @@ import Inventory from "@/pages/Inventory";
 import Categories from "@/pages/Categories";
 import ShoppingList from "@/pages/ShoppingList";
 import Login from "@/pages/Login";
-import Register from "@/pages/Register";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5000, retry: 1 } },
@@ -20,7 +19,6 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
             <Route
               path="/*"
               element={

@@ -53,7 +53,7 @@ export interface ShoppingListItem {
   suggested_quantity: number;
 }
 
-export interface PredictedShoppingListItem extends ShoppingListItem {
+export interface PredictedShoppingListItem extends Omit<ShoppingListItem, "priority"> {
   priority: 1 | 2 | 3 | 4;
   days_until_needed: number;
   predicted_date: string;
@@ -98,23 +98,15 @@ export const shoppingListApi = {
     api.post("/shopping-list/bulk-buy", { product_ids: productIds }).then(r => r.data),
 };
 
-export interface UserRead {
-  id: number;
-  email: string;
-  created_at: string;
-}
-
 export interface Token {
   access_token: string;
   token_type: string;
 }
 
 export const authApi = {
-  register: (email: string, password: string) =>
-    api.post<UserRead>("/auth/register", { email, password }).then(r => r.data),
-  login: (email: string, password: string) => {
+  login: (password: string) => {
     const form = new URLSearchParams();
-    form.set("username", email);
+    form.set("username", "owner");
     form.set("password", password);
     return api
       .post<Token>("/auth/login", form, {
@@ -122,5 +114,5 @@ export const authApi = {
       })
       .then(r => r.data);
   },
-  me: () => api.get<UserRead>("/auth/me").then(r => r.data),
+  verify: () => api.get("/auth/verify").then(r => r.data),
 };

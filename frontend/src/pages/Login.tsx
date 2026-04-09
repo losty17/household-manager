@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,10 +17,10 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
+      await login(password);
       navigate("/");
     } catch {
-      setError("Incorrect email or password.");
+      setError("Incorrect password.");
     } finally {
       setLoading(false);
     }
@@ -35,17 +34,6 @@ export default function Login() {
           <p className="text-sm text-muted-foreground mt-1">Household Manager</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-            />
-          </div>
           <div className="space-y-1">
             <Label htmlFor="password">Password</Label>
             <Input
@@ -62,12 +50,6 @@ export default function Login() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <Link to="/register" className="text-primary underline underline-offset-4">
-            Create one
-          </Link>
-        </p>
       </div>
     </div>
   );

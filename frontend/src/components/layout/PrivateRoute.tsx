@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ReactNode } from "react";
 
 export default function PrivateRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -13,7 +13,7 @@ export default function PrivateRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

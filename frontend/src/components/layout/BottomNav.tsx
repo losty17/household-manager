@@ -18,7 +18,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-border z-20 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-20 pb-safe">
       <div className="flex max-w-lg mx-auto">
         {tabs.map(tab => {
           const isActive = location.pathname === tab.path;

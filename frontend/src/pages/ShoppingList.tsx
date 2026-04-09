@@ -77,10 +77,10 @@ export default function ShoppingList() {
   };
 
   const priorityConfig = {
-    1: { label: "Urgent", color: "destructive" as const, bg: "bg-red-50 border-red-200" },
-    2: { label: "Low Stock", color: "warning" as const, bg: "bg-yellow-50 border-yellow-200" },
-    3: { label: "Due Soon", color: "secondary" as const, bg: "bg-blue-50 border-blue-200" },
-    4: { label: "Predicted", color: "outline" as const, bg: "bg-purple-50 border-purple-200" },
+    1: { label: "Urgent", color: "destructive" as const, bg: "bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800" },
+    2: { label: "Low Stock", color: "warning" as const, bg: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/40 dark:border-yellow-800" },
+    3: { label: "Due Soon", color: "secondary" as const, bg: "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800" },
+    4: { label: "Predicted", color: "outline" as const, bg: "bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800" },
   };
 
   const renderSection = (sectionItems: ShoppingListItem[], priority: 1 | 2 | 3) => {
@@ -122,8 +122,8 @@ export default function ShoppingList() {
                 disabled={singleBuyMutation.isPending || boughtItems.has(item.product_id)}
                 className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors ${
                   boughtItems.has(item.product_id)
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-white border-2 border-green-500 text-green-600 active:bg-green-50'
+                    ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400'
+                    : 'bg-background border-2 border-green-500 text-green-600 active:bg-green-50 dark:text-green-400 dark:border-green-600'
                 }`}
               >
                 <Check className="h-5 w-5" />
@@ -151,7 +151,7 @@ export default function ShoppingList() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-sm truncate">{item.name}</p>
-                    <span className="inline-flex items-center gap-1 text-xs bg-white border rounded-full px-2 py-0.5 text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 text-xs bg-background border rounded-full px-2 py-0.5 text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       {item.days_until_needed < 1
                         ? "today"

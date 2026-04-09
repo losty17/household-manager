@@ -180,13 +180,13 @@ export default function ShoppingList() {
 
   return (
     <div className="p-4 pb-28 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ShoppingCart className="h-6 w-6" /> Shopping List
-        </h1>
+      <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => mode === "current" ? refetch() : refetchPredict()}>
           <RefreshCw className="h-4 w-4" />
         </Button>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <ShoppingCart className="h-6 w-6" /> Shopping List
+        </h1>
       </div>
 
       {/* Mode toggle */}

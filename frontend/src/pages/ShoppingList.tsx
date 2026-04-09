@@ -4,6 +4,8 @@ import { shoppingListApi, productsApi, ShoppingListItem, PredictedShoppingListIt
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ShoppingCart, Check, CheckSquare, Square, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
 
 const PREDICT_PERIODS = [
@@ -18,6 +20,9 @@ export default function ShoppingList() {
   const [boughtItems, setBoughtItems] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<"current" | "predict">("current");
   const [predictDays, setPredictDays] = useState(7);
+  const [restockItem, setRestockItem] = useState<ShoppingListItem | null>(null);
+  const [restockQty, setRestockQty] = useState<string>("");
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
 
   const { data: items = [], isLoading, refetch } = useQuery({
     queryKey: ["shopping-list"],
@@ -42,8 +47,8 @@ export default function ShoppingList() {
   });
 
   const singleBuyMutation = useMutation({
-    mutationFn: async (item: ShoppingListItem) => {
-      await productsApi.restock(item.product_id, { new_stock: item.suggested_quantity });
+    mutationFn: async ({ item, quantity }: { item: ShoppingListItem; quantity: number }) => {
+      await productsApi.restock(item.product_id, { new_stock: item.current_stock + quantity });
       return item;
     },
     onSuccess: (item) => {
@@ -83,6 +88,15 @@ export default function ShoppingList() {
     4: { label: "Predicted", color: "outline" as const, bg: "bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800" },
   };
 
+  const restockQtyValue = parseFloat(restockQty);
+  const isRestockQtyValid = !isNaN(restockQtyValue) && restockQtyValue >= 0;
+
+  const handleRestockConfirm = () => {
+    if (!restockItem || !isRestockQtyValid) return;
+    singleBuyMutation.mutate({ item: restockItem, quantity: restockQtyValue });
+    setRestockItem(null);
+  };
+
   const renderSection = (sectionItems: ShoppingListItem[], priority: 1 | 2 | 3) => {
     if (sectionItems.length === 0) return null;
     const config = priorityConfig[priority];
@@ -118,7 +132,10 @@ export default function ShoppingList() {
                 </p>
               </div>
               <button
-                onClick={() => singleBuyMutation.mutate(item)}
+                onClick={() => {
+                  setRestockItem(item);
+                  setRestockQty(String(item.suggested_quantity));
+                }}
                 disabled={singleBuyMutation.isPending || boughtItems.has(item.product_id)}
                 className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors ${
                   boughtItems.has(item.product_id)
@@ -258,7 +275,7 @@ export default function ShoppingList() {
               <Button
                 size="sm"
                 className="ml-auto"
-                onClick={() => bulkBuyMutation.mutate(Array.from(selected))}
+                onClick={() => setShowBulkConfirm(true)}
                 disabled={bulkBuyMutation.isPending}
               >
                 {bulkBuyMutation.isPending ? "Processing..." : `Buy ${selected.size} Items`}
@@ -281,6 +298,69 @@ export default function ShoppingList() {
           {renderPredictSection(predictedFuture, 4)}
         </>
       )}
+
+      {/* Single item restock dialog */}
+      <Dialog open={restockItem !== null} onOpenChange={(open) => { if (!open) setRestockItem(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>How much did you buy?</DialogTitle>
+            <DialogDescription>
+              Enter the quantity of <span className="font-medium text-foreground">{restockItem?.name}</span> purchased.
+              {restockItem && (
+                <span className="block mt-1">Suggested: {restockItem.suggested_quantity} {restockItem.unit}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              step="any"
+              value={restockQty}
+              onChange={(e) => setRestockQty(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRestockConfirm();
+              }}
+              className="flex-1"
+              autoFocus
+            />
+            <span className="text-sm text-muted-foreground">{restockItem?.unit}</span>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRestockItem(null)}>Cancel</Button>
+            <Button
+              onClick={handleRestockConfirm}
+              disabled={singleBuyMutation.isPending || !isRestockQtyValid}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk buy confirmation dialog */}
+      <Dialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Bulk Buy</DialogTitle>
+            <DialogDescription>
+              Restock {selected.size} item{selected.size !== 1 ? 's' : ''} using their suggested quantities?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkConfirm(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                bulkBuyMutation.mutate(Array.from(selected));
+                setShowBulkConfirm(false);
+              }}
+              disabled={bulkBuyMutation.isPending}
+            >
+              {bulkBuyMutation.isPending ? "Processing..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

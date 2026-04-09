@@ -20,7 +20,7 @@ export default function Login() {
       await login(password);
       navigate("/");
     } catch {
-      setError("Incorrect password.");
+      setError("Senha incorreta.");
     } finally {
       setLoading(false);
     }
@@ -30,12 +30,12 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Sign in</h1>
-          <p className="text-sm text-muted-foreground mt-1">Household Manager</p>
+          <h1 className="text-2xl font-bold">Entrar</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gerenciador Doméstico</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Senha</Label>
             <Input
               id="password"
               type="password"
@@ -47,7 +47,7 @@ export default function Login() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Entrando…" : "Entrar"}
           </Button>
         </form>
       </div>

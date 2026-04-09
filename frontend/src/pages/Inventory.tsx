@@ -155,8 +155,8 @@ export default function Inventory() {
   };
 
   const statusBadge = (status: string) => {
-    if (status === "ended") return <Badge variant="destructive" className="text-xs">Ended</Badge>;
-    if (status === "low_stock") return <Badge variant="warning" className="text-xs">Low Stock</Badge>;
+    if (status === "ended") return <Badge variant="destructive" className="text-xs">Esgotado</Badge>;
+    if (status === "low_stock") return <Badge variant="warning" className="text-xs">Estoque Baixo</Badge>;
     return <Badge variant="success" className="text-xs">OK</Badge>;
   };
 
@@ -165,8 +165,8 @@ export default function Inventory() {
   return (
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Home</h1>
-        <span className="text-sm text-muted-foreground mr-10">{new Date().toLocaleDateString()}</span>
+        <h1 className="text-2xl font-bold">Início</h1>
+        <span className="text-sm text-muted-foreground mr-10">{new Date().toLocaleDateString('pt-BR')}</span>
       </div>
 
       {/* Stats Grid */}
@@ -175,28 +175,28 @@ export default function Inventory() {
           <CardContent className="p-3 flex flex-col items-center text-center">
             <Package className="h-4 w-4 text-blue-600 dark:text-blue-400 mb-1" />
             <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{products.length}</p>
-            <p className="text-[10px] text-blue-600 dark:text-blue-400">Items</p>
+            <p className="text-[10px] text-blue-600 dark:text-blue-400">Itens</p>
           </CardContent>
         </Card>
         <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/40 dark:border-yellow-800">
           <CardContent className="p-3 flex flex-col items-center text-center">
             <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mb-1" />
             <p className="text-xl font-bold text-yellow-700 dark:text-yellow-300">{lowStockCount}</p>
-            <p className="text-[10px] text-yellow-600 dark:text-yellow-400">Low Stock</p>
+            <p className="text-[10px] text-yellow-600 dark:text-yellow-400">Estoque Baixo</p>
           </CardContent>
         </Card>
         <Card className="bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800">
           <CardContent className="p-3 flex flex-col items-center text-center">
             <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 mb-1" />
             <p className="text-xl font-bold text-red-700 dark:text-red-300">{endedCount}</p>
-            <p className="text-[10px] text-red-600 dark:text-red-400">Ended</p>
+            <p className="text-[10px] text-red-600 dark:text-red-400">Esgotados</p>
           </CardContent>
         </Card>
         <Card className="bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-800">
           <CardContent className="p-3 flex flex-col items-center text-center">
             <ShoppingCart className="h-4 w-4 text-green-600 dark:text-green-400 mb-1" />
             <p className="text-xl font-bold text-green-700 dark:text-green-300">{shoppingList.length}</p>
-            <p className="text-[10px] text-green-600 dark:text-green-400">To Buy</p>
+            <p className="text-[10px] text-green-600 dark:text-green-400">Comprar</p>
           </CardContent>
         </Card>
       </div>
@@ -205,7 +205,7 @@ export default function Inventory() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search items..."
+          placeholder="Buscar itens..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="pl-9"
@@ -219,10 +219,10 @@ export default function Inventory() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">Todos os Status</SelectItem>
             <SelectItem value="ok">OK</SelectItem>
-            <SelectItem value="low_stock">Low Stock</SelectItem>
-            <SelectItem value="ended">Ended</SelectItem>
+            <SelectItem value="low_stock">Estoque Baixo</SelectItem>
+            <SelectItem value="ended">Esgotado</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -230,7 +230,7 @@ export default function Inventory() {
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="all">Todas as Categorias</SelectItem>
             {categories.map(c => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.icon && <span className="mr-1">{c.icon}</span>}{c.name}
@@ -242,11 +242,11 @@ export default function Inventory() {
 
       {/* Products List */}
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">Carregando...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Package className="h-10 w-10 mx-auto mb-2 opacity-50" />
-          No items found
+          Nenhum item encontrado
         </div>
       ) : (
         <div className="space-y-2">
@@ -272,8 +272,8 @@ export default function Inventory() {
                     </div>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                    <span>{product.current_stock} {product.unit} remaining</span>
-                    <span>Min: {product.min_threshold} {product.unit}</span>
+                    <span>{product.current_stock} {product.unit} restante</span>
+                    <span>Mín: {product.min_threshold} {product.unit}</span>
                   </div>
                   <Progress
                     value={Math.min((product.current_stock / Math.max(product.min_threshold, 1)) * 100, 100)}
@@ -281,7 +281,7 @@ export default function Inventory() {
                   />
                   {product.expiration_date && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Expires: {new Date(product.expiration_date).toLocaleDateString()}
+                      Vence: {new Date(product.expiration_date).toLocaleDateString('pt-BR')}
                     </p>
                   )}
                 </CardContent>
@@ -313,19 +313,19 @@ export default function Inventory() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Current Stock</p>
+                    <p className="text-xs text-muted-foreground">Estoque Atual</p>
                     <p className="font-semibold">{selectedProduct.current_stock} {selectedProduct.unit}</p>
                   </div>
                   <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Min Threshold</p>
+                    <p className="text-xs text-muted-foreground">Mínimo</p>
                     <p className="font-semibold">{selectedProduct.min_threshold} {selectedProduct.unit}</p>
                   </div>
                   <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Frequency</p>
+                    <p className="text-xs text-muted-foreground">Frequência</p>
                     <p className="font-semibold capitalize">{selectedProduct.buying_frequency}</p>
                   </div>
                   <div className="bg-muted rounded-md p-2">
-                    <p className="text-xs text-muted-foreground">Category</p>
+                    <p className="text-xs text-muted-foreground">Categoria</p>
                     <p className="font-semibold">
                       {(() => { const cat = categories.find(c => c.id === selectedProduct.category_id); return cat?.icon ? `${cat.icon} ` : ""; })()}
                       {selectedProduct.category_name}
@@ -334,7 +334,7 @@ export default function Inventory() {
                 </div>
                 {selectedProduct.next_purchase_date && (
                   <p className="text-xs text-muted-foreground">
-                    Next purchase: {new Date(selectedProduct.next_purchase_date).toLocaleDateString()}
+                    Próxima compra: {new Date(selectedProduct.next_purchase_date).toLocaleDateString('pt-BR')}
                   </p>
                 )}
               </div>
@@ -344,14 +344,14 @@ export default function Inventory() {
                     className="flex-1"
                     onClick={() => { setRestockQty(String(selectedProduct.min_threshold * 2)); setShowRestockDialog(true); }}
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" /> Restock
+                    <RefreshCw className="h-4 w-4 mr-2" /> Repor
                   </Button>
                   <Button
                     variant="outline"
                     className="flex-1"
                     onClick={() => { setConsumeQty("1"); setShowConsumeDialog(true); }}
                   >
-                    <MinusCircle className="h-4 w-4 mr-2" /> Use
+                    <MinusCircle className="h-4 w-4 mr-2" /> Usar
                   </Button>
                 </div>
                 {selectedProduct.status !== "ended" && (
@@ -360,19 +360,19 @@ export default function Inventory() {
                     className="w-full"
                     onClick={() => markEndedMutation.mutate(selectedProduct.id)}
                   >
-                    <XCircle className="h-4 w-4 mr-2" /> Mark as Ended
+                    <XCircle className="h-4 w-4 mr-2" /> Marcar como Esgotado
                   </Button>
                 )}
                 <div className="flex gap-2 w-full">
                   <Button variant="outline" className="flex-1" onClick={() => openEdit(selectedProduct)}>
-                    Edit
+                    Editar
                   </Button>
                   <Button
                     variant="outline"
                     className="flex-1 text-red-500"
-                    onClick={() => { if (confirm("Delete this item?")) deleteMutation.mutate(selectedProduct.id); }}
+                    onClick={() => { if (confirm("Excluir este item?")) deleteMutation.mutate(selectedProduct.id); }}
                   >
-                    Delete
+                    Excluir
                   </Button>
                 </div>
               </DialogFooter>
@@ -384,9 +384,9 @@ export default function Inventory() {
       {/* Restock Dialog */}
       <Dialog open={showRestockDialog} onOpenChange={setShowRestockDialog}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Restock {selectedProduct?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Repor {selectedProduct?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <Label>New Stock Quantity ({selectedProduct?.unit})</Label>
+            <Label>Nova Quantidade em Estoque ({selectedProduct?.unit})</Label>
             <Input
               type="number"
               value={restockQty}
@@ -396,9 +396,9 @@ export default function Inventory() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRestockDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowRestockDialog(false)}>Cancelar</Button>
             <Button onClick={() => selectedProduct && restockMutation.mutate(selectedProduct.id)}>
-              Confirm Restock
+              Confirmar Reposição
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -407,9 +407,9 @@ export default function Inventory() {
       {/* Consume Dialog */}
       <Dialog open={showConsumeDialog} onOpenChange={setShowConsumeDialog}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Use {selectedProduct?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Usar {selectedProduct?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <Label>Amount to remove ({selectedProduct?.unit})</Label>
+            <Label>Quantidade a remover ({selectedProduct?.unit})</Label>
             <Input
               type="number"
               value={consumeQty}
@@ -419,9 +419,9 @@ export default function Inventory() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConsumeDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowConsumeDialog(false)}>Cancelar</Button>
             <Button onClick={() => selectedProduct && consumeMutation.mutate(selectedProduct.id)}>
-              Confirm
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -431,33 +431,33 @@ export default function Inventory() {
       <Dialog open={showAddDialog} onOpenChange={open => { if (!open) { setShowAddDialog(false); setEditingProduct(null); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+            <DialogTitle>{editingProduct ? "Editar Produto" : "Novo Produto"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <Label>Name *</Label>
-              <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required placeholder="e.g. Olive Oil" />
+              <Label>Nome *</Label>
+              <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required placeholder="ex: Azeite" />
             </div>
             <div>
-              <Label>Category *</Label>
+              <Label>Categoria *</Label>
               <Select
                 value={form.category_id}
                 onValueChange={v => setForm({...form, category_id: v, new_category_name: v === NEW_CATEGORY_VALUE ? form.new_category_name : ""})}
               >
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecionar categoria" /></SelectTrigger>
                 <SelectContent>
                   {categories.map(c => (
                     <SelectItem key={c.id} value={String(c.id)}>
                       {c.icon && <span className="mr-1">{c.icon}</span>}{c.name}
                     </SelectItem>
                   ))}
-                  <SelectItem value={NEW_CATEGORY_VALUE}>+ Create new category</SelectItem>
+                  <SelectItem value={NEW_CATEGORY_VALUE}>+ Criar nova categoria</SelectItem>
                 </SelectContent>
               </Select>
               {form.category_id === NEW_CATEGORY_VALUE && (
                 <Input
                   className="mt-2"
-                  placeholder="New category name"
+                  placeholder="Nome da nova categoria"
                   value={form.new_category_name}
                   onChange={e => setForm({...form, new_category_name: e.target.value})}
                   required
@@ -465,50 +465,50 @@ export default function Inventory() {
               )}
             </div>
             <div>
-              <Label>Current Stock</Label>
+              <Label>Estoque Atual</Label>
               <Input type="number" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} min="0" step="0.1" />
             </div>
             <div>
-              <Label>Min Threshold</Label>
+              <Label>Mínimo</Label>
               <Input type="number" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} min="0" step="0.1" />
             </div>
             <div>
-              <Label>Unit</Label>
+              <Label>Unidade</Label>
               <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="count">count</SelectItem>
-                  <SelectItem value="grams">grams</SelectItem>
+                  <SelectItem value="count">unidade</SelectItem>
+                  <SelectItem value="grams">gramas</SelectItem>
                   <SelectItem value="kg">kg</SelectItem>
-                  <SelectItem value="liters">liters</SelectItem>
+                  <SelectItem value="liters">litros</SelectItem>
                   <SelectItem value="ml">ml</SelectItem>
-                  <SelectItem value="pieces">pieces</SelectItem>
-                  <SelectItem value="bottles">bottles</SelectItem>
-                  <SelectItem value="boxes">boxes</SelectItem>
-                  <SelectItem value="packs">packs</SelectItem>
+                  <SelectItem value="pieces">peças</SelectItem>
+                  <SelectItem value="bottles">garrafas</SelectItem>
+                  <SelectItem value="boxes">caixas</SelectItem>
+                  <SelectItem value="packs">pacotes</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Frequency</Label>
+              <Label>Frequência</Label>
               <Select value={form.buying_frequency} onValueChange={v => setForm({...form, buying_frequency: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="bi-weekly">Quinzenal</SelectItem>
+                  <SelectItem value="monthly">Mensal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Expiration Date (optional)</Label>
+              <Label>Data de Validade (opcional)</Label>
               <Input type="date" value={form.expiration_date} onChange={e => setForm({...form, expiration_date: e.target.value})} />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>Cancelar</Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Saving..." : editingProduct ? "Update" : "Add Product"}
+                {createMutation.isPending ? "Salvando..." : editingProduct ? "Atualizar" : "Adicionar Produto"}
               </Button>
             </DialogFooter>
           </form>

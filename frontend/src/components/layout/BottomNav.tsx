@@ -12,9 +12,9 @@ export default function BottomNav() {
   });
 
   const tabs = [
-    { path: "/", label: "Home", icon: Home },
-    { path: "/categories", label: "Categories", icon: Tag },
-    { path: "/shopping-list", label: "Shopping", icon: ShoppingCart, badge: shoppingList.length },
+    { path: "/", label: "Início", icon: Home },
+    { path: "/categories", label: "Categorias", icon: Tag },
+    { path: "/shopping-list", label: "Compras", icon: ShoppingCart, badge: shoppingList.length },
   ];
 
   return (

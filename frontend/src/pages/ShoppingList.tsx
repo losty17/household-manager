@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Check, CheckSquare, Square, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
 
 const PREDICT_PERIODS = [
-  { label: "1 Week", days: 7 },
-  { label: "2 Weeks", days: 14 },
-  { label: "1 Month", days: 30 },
+  { label: "1 Semana", days: 7 },
+  { label: "2 Semanas", days: 14 },
+  { label: "1 Mês", days: 30 },
 ];
 
 export default function ShoppingList() {
@@ -77,10 +77,10 @@ export default function ShoppingList() {
   };
 
   const priorityConfig = {
-    1: { label: "Urgent", color: "destructive" as const, bg: "bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800" },
-    2: { label: "Low Stock", color: "warning" as const, bg: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/40 dark:border-yellow-800" },
-    3: { label: "Due Soon", color: "secondary" as const, bg: "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800" },
-    4: { label: "Predicted", color: "outline" as const, bg: "bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800" },
+    1: { label: "Urgente", color: "destructive" as const, bg: "bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800" },
+    2: { label: "Estoque Baixo", color: "warning" as const, bg: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/40 dark:border-yellow-800" },
+    3: { label: "A Vencer", color: "secondary" as const, bg: "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800" },
+    4: { label: "Previsto", color: "outline" as const, bg: "bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800" },
   };
 
   const renderSection = (sectionItems: ShoppingListItem[], priority: 1 | 2 | 3) => {
@@ -111,9 +111,9 @@ export default function ShoppingList() {
                 <p className="font-medium text-sm truncate">{item.name}</p>
                 <p className="text-xs text-muted-foreground">{item.category_name} • {item.reason}</p>
                 <p className="text-xs font-medium mt-0.5">
-                  Suggested: <span className="text-primary">{item.suggested_quantity} {item.unit}</span>
+                  Sugerido: <span className="text-primary">{item.suggested_quantity} {item.unit}</span>
                   {item.current_stock > 0 && (
-                    <span className="text-muted-foreground ml-1">(have {item.current_stock})</span>
+                    <span className="text-muted-foreground ml-1">(tem {item.current_stock})</span>
                   )}
                 </p>
               </div>
@@ -154,17 +154,17 @@ export default function ShoppingList() {
                     <span className="inline-flex items-center gap-1 text-xs bg-background border rounded-full px-2 py-0.5 text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       {item.days_until_needed < 1
-                        ? "today"
-                        : `in ${Math.round(item.days_until_needed)}d`}
+                        ? "hoje"
+                        : `em ${Math.round(item.days_until_needed)}d`}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">{item.category_name} • {item.reason}</p>
                   <p className="text-xs font-medium mt-0.5">
-                    Suggested: <span className="text-primary">{item.suggested_quantity} {item.unit}</span>
+                    Sugerido: <span className="text-primary">{item.suggested_quantity} {item.unit}</span>
                     {item.current_stock > 0 && (
-                      <span className="text-muted-foreground ml-1">(have {item.current_stock})</span>
+                      <span className="text-muted-foreground ml-1">(tem {item.current_stock})</span>
                     )}
-                    <span className="text-muted-foreground ml-1">• by {item.predicted_date}</span>
+                    <span className="text-muted-foreground ml-1">• em {item.predicted_date}</span>
                   </p>
                 </div>
               </div>
@@ -182,7 +182,7 @@ export default function ShoppingList() {
     <div className="p-4 pb-28 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ShoppingCart className="h-6 w-6" /> Shopping List
+          <ShoppingCart className="h-6 w-6" /> Lista de Compras
         </h1>
         <Button variant="ghost" size="sm" onClick={() => mode === "current" ? refetch() : refetchPredict()}>
           <RefreshCw className="h-4 w-4" />
@@ -198,7 +198,7 @@ export default function ShoppingList() {
           }`}
         >
           <ShoppingCart className="h-4 w-4" />
-          Current
+          Atual
         </button>
         <button
           onClick={() => setMode("predict")}
@@ -207,7 +207,7 @@ export default function ShoppingList() {
           }`}
         >
           <TrendingUp className="h-4 w-4" />
-          Predict
+          Prever
         </button>
       </div>
 
@@ -231,15 +231,15 @@ export default function ShoppingList() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">Carregando...</div>
       ) : displayItems.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">
               {mode === "current"
-                ? "All stocked up! Nothing to buy right now."
-                : `Nothing predicted to be needed in the next ${predictDays} days.`}
+                ? "Tudo abastecido! Nada para comprar agora."
+                : `Nada previsto para os próximos ${predictDays} dias.`}
             </p>
           </CardContent>
         </Card>
@@ -252,7 +252,7 @@ export default function ShoppingList() {
                 ? <CheckSquare className="h-5 w-5 text-primary" />
                 : <Square className="h-5 w-5 text-muted-foreground" />
               }
-              {selected.size > 0 ? `${selected.size} selected` : "Select All"}
+              {selected.size > 0 ? `${selected.size} selecionado(s)` : "Selecionar Todos"}
             </button>
             {selected.size > 0 && (
               <Button
@@ -261,7 +261,7 @@ export default function ShoppingList() {
                 onClick={() => bulkBuyMutation.mutate(Array.from(selected))}
                 disabled={bulkBuyMutation.isPending}
               >
-                {bulkBuyMutation.isPending ? "Processing..." : `Buy ${selected.size} Items`}
+                {bulkBuyMutation.isPending ? "Processando..." : `Comprar ${selected.size} Itens`}
               </Button>
             )}
           </div>
@@ -273,7 +273,7 @@ export default function ShoppingList() {
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            Showing items predicted to be needed within the next {predictDays} days.
+            Exibindo itens previstos para os próximos {predictDays} dias.
           </p>
           {renderPredictSection(predictedUrgent, 1)}
           {renderPredictSection(predictedLowStock, 2)}

@@ -74,14 +74,14 @@ export default function Categories() {
 
   return (
     <div className="p-4 pb-24 space-y-4">
-      <h1 className="text-2xl font-bold">Categories</h1>
+      <h1 className="text-2xl font-bold">Categorias</h1>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">Carregando...</div>
       ) : categories.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Tag className="h-10 w-10 mx-auto mb-2 opacity-50" />
-          No categories yet
+          Nenhuma categoria ainda
         </div>
       ) : (
         <div className="space-y-2">
@@ -98,7 +98,7 @@ export default function Categories() {
                   <div>
                     <p className="font-medium text-sm">{cat.name}</p>
                     <Badge variant="secondary" className="text-xs mt-0.5">
-                      {cat.product_count} {cat.product_count === 1 ? "item" : "items"}
+                      {cat.product_count} {cat.product_count === 1 ? "item" : "itens"}
                     </Badge>
                   </div>
                 </div>
@@ -112,10 +112,10 @@ export default function Categories() {
                     className="text-red-500"
                     onClick={() => {
                       if (cat.product_count > 0) {
-                        alert("Cannot delete a category that has products assigned to it.");
+                        alert("Não é possível excluir uma categoria que possui produtos associados.");
                         return;
                       }
-                      if (confirm(`Delete "${cat.name}"?`)) deleteMutation.mutate(cat.id);
+                      if (confirm(`Excluir "${cat.name}"?`)) deleteMutation.mutate(cat.id);
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -139,20 +139,20 @@ export default function Categories() {
       <Dialog open={showDialog} onOpenChange={open => { if (!open) { setShowDialog(false); setEditingCategory(null); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editingCategory ? "Edit Category" : "New Category"}</DialogTitle>
+            <DialogTitle>{editingCategory ? "Editar Categoria" : "Nova Categoria"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <Label>Name *</Label>
+              <Label>Nome *</Label>
               <Input
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 required
-                placeholder="e.g. Dairy"
+                placeholder="ex: Laticínios"
               />
             </div>
             <div>
-              <Label>Icon (emoji)</Label>
+              <Label>Ícone (emoji)</Label>
               <Input
                 value={form.icon}
                 onChange={e => setForm({ ...form, icon: e.target.value })}
@@ -161,7 +161,7 @@ export default function Categories() {
               />
             </div>
             <div>
-              <Label>Color (hex or CSS color)</Label>
+              <Label>Cor (hex ou CSS)</Label>
               <div className="flex gap-2 items-center">
                 <Input
                   value={form.color}
@@ -177,9 +177,9 @@ export default function Categories() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>
               <Button type="submit" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? "Saving..." : editingCategory ? "Update" : "Create"}
+                {saveMutation.isPending ? "Salvando..." : editingCategory ? "Atualizar" : "Criar"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "@/contexts/AuthContext";
 import BottomNav from "@/components/layout/BottomNav";
+import PrivateRoute from "@/components/layout/PrivateRoute";
 import Inventory from "@/pages/Inventory";
 import Categories from "@/pages/Categories";
 import ShoppingList from "@/pages/ShoppingList";
+import Login from "@/pages/Login";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5000, retry: 1 } },
@@ -13,14 +16,26 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-background max-w-lg mx-auto relative">
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<Inventory />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/shopping-list" element={<ShoppingList />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/*"
+              element={
+                <PrivateRoute>
+                  <div className="min-h-screen bg-background max-w-lg mx-auto relative">
+                    <Routes>
+                      <Route path="/" element={<Inventory />} />
+                      <Route path="/categories" element={<Categories />} />
+                      <Route path="/shopping-list" element={<ShoppingList />} />
+                    </Routes>
+                    <BottomNav />
+                  </div>
+                </PrivateRoute>
+              }
+            />
           </Routes>
-          <BottomNav />
-        </div>
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );

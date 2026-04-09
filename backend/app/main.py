@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.database import engine, Base, SessionLocal
-from app.routers import categories, products, shopping_list
+from app.routers import categories, products, shopping_list, auth
 import app.models  # noqa: F401 – ensure models are registered with Base
 
 
@@ -56,6 +56,7 @@ app.add_middleware(
 app.include_router(categories.router, prefix="/api/v1")
 app.include_router(products.router, prefix="/api/v1")
 app.include_router(shopping_list.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
 
 
 @app.get("/")

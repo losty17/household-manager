@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
+import { useTheme } from "@/lib/theme";
+import { adaptColorForDark } from "@/lib/utils";
 
 interface CategoryFormData {
   name: string;
@@ -19,6 +21,8 @@ const defaultForm: CategoryFormData = { name: "", icon: "", color: "" };
 
 export default function Categories() {
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [showDialog, setShowDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [form, setForm] = useState<CategoryFormData>(defaultForm);
@@ -87,7 +91,7 @@ export default function Categories() {
                 <div className="flex items-center gap-3">
                   <div
                     className="h-10 w-10 rounded-full flex items-center justify-center text-xl"
-                    style={{ backgroundColor: cat.color || "#e5e7eb" }}
+                    style={{ backgroundColor: adaptColorForDark(cat.color || "#e5e7eb", isDark) }}
                   >
                     {cat.icon ? cat.icon : <Tag className="h-5 w-5 text-muted-foreground" />}
                   </div>

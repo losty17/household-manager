@@ -171,32 +171,32 @@ export default function Inventory() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-2">
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800">
           <CardContent className="p-3 flex flex-col items-center text-center">
-            <Package className="h-4 w-4 text-blue-600 mb-1" />
-            <p className="text-xl font-bold text-blue-700">{products.length}</p>
-            <p className="text-[10px] text-blue-600">Items</p>
+            <Package className="h-4 w-4 text-blue-600 dark:text-blue-400 mb-1" />
+            <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{products.length}</p>
+            <p className="text-[10px] text-blue-600 dark:text-blue-400">Items</p>
           </CardContent>
         </Card>
-        <Card className="bg-yellow-50 border-yellow-200">
+        <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/40 dark:border-yellow-800">
           <CardContent className="p-3 flex flex-col items-center text-center">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mb-1" />
-            <p className="text-xl font-bold text-yellow-700">{lowStockCount}</p>
-            <p className="text-[10px] text-yellow-600">Low Stock</p>
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mb-1" />
+            <p className="text-xl font-bold text-yellow-700 dark:text-yellow-300">{lowStockCount}</p>
+            <p className="text-[10px] text-yellow-600 dark:text-yellow-400">Low Stock</p>
           </CardContent>
         </Card>
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800">
           <CardContent className="p-3 flex flex-col items-center text-center">
-            <XCircle className="h-4 w-4 text-red-600 mb-1" />
-            <p className="text-xl font-bold text-red-700">{endedCount}</p>
-            <p className="text-[10px] text-red-600">Ended</p>
+            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 mb-1" />
+            <p className="text-xl font-bold text-red-700 dark:text-red-300">{endedCount}</p>
+            <p className="text-[10px] text-red-600 dark:text-red-400">Ended</p>
           </CardContent>
         </Card>
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-800">
           <CardContent className="p-3 flex flex-col items-center text-center">
-            <ShoppingCart className="h-4 w-4 text-green-600 mb-1" />
-            <p className="text-xl font-bold text-green-700">{shoppingList.length}</p>
-            <p className="text-[10px] text-green-600">To Buy</p>
+            <ShoppingCart className="h-4 w-4 text-green-600 dark:text-green-400 mb-1" />
+            <p className="text-xl font-bold text-green-700 dark:text-green-300">{shoppingList.length}</p>
+            <p className="text-[10px] text-green-600 dark:text-green-400">To Buy</p>
           </CardContent>
         </Card>
       </div>

@@ -118,8 +118,11 @@ export default function Inventory() {
     },
   });
 
+  const normalize = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
   const filtered = products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = normalize(p.name).includes(normalize(search));
     const matchStatus = filterStatus === "all" || p.status === filterStatus;
     const matchCategory = filterCategory === "all" || String(p.category_id) === filterCategory;
     return matchSearch && matchStatus && matchCategory;

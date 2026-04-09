@@ -39,6 +39,7 @@ import {
   ShoppingCart,
   MinusCircle,
 } from "lucide-react";
+import { translateUnit, translateFrequency, isoToBR, brToISO } from "@/lib/utils";
 
 interface ProductFormData {
   name: string;
@@ -183,7 +184,7 @@ export default function Inventory() {
       unit: product.unit,
       buying_frequency: product.buying_frequency,
       expiration_date: product.expiration_date
-        ? product.expiration_date.split("T")[0]
+        ? isoToBR(product.expiration_date.split("T")[0])
         : "",
     });
     setShowAddDialog(true);
@@ -202,7 +203,7 @@ export default function Inventory() {
       min_threshold: parseFloat(form.min_threshold),
       unit: form.unit,
       buying_frequency: form.buying_frequency as Product["buying_frequency"],
-      expiration_date: form.expiration_date || undefined,
+      expiration_date: form.expiration_date ? brToISO(form.expiration_date) : undefined,
     });
   };
 
@@ -312,7 +313,7 @@ export default function Inventory() {
         </Select>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
           <SelectTrigger className="flex-1 h-9 text-xs">
-            <SelectValue placeholder="Category" />
+            <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as Categorias</SelectItem>
@@ -354,7 +355,7 @@ export default function Inventory() {
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {categoryIcon(cat)}
-                        {product.category_name || "Uncategorized"}
+                        {product.category_name || "Sem categoria"}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 ml-2">
@@ -364,10 +365,10 @@ export default function Inventory() {
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
                     <span>
-                      {product.current_stock} {product.unit} restante
+                      {product.current_stock} {translateUnit(product.unit)} restante
                     </span>
                     <span>
-                      Mín: {product.min_threshold} {product.unit}
+                      Mín: {product.min_threshold} {translateUnit(product.unit)}
                     </span>
                   </div>
                   <Progress
@@ -427,19 +428,19 @@ export default function Inventory() {
                       Estoque Atual
                     </p>
                     <p className="font-semibold">
-                      {selectedProduct.current_stock} {selectedProduct.unit}
+                      {selectedProduct.current_stock} {translateUnit(selectedProduct.unit)}
                     </p>
                   </div>
                   <div className="bg-muted rounded-md p-2">
                     <p className="text-xs text-muted-foreground">Mínimo</p>
                     <p className="font-semibold">
-                      {selectedProduct.min_threshold} {selectedProduct.unit}
+                      {selectedProduct.min_threshold} {translateUnit(selectedProduct.unit)}
                     </p>
                   </div>
                   <div className="bg-muted rounded-md p-2">
                     <p className="text-xs text-muted-foreground">Frequência</p>
                     <p className="font-semibold capitalize">
-                      {selectedProduct.buying_frequency}
+                      {translateFrequency(selectedProduct.buying_frequency)}
                     </p>
                   </div>
                   <div className="bg-muted rounded-md p-2">
@@ -527,7 +528,7 @@ export default function Inventory() {
             <DialogTitle>Repor {selectedProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Label>Nova Quantidade em Estoque ({selectedProduct?.unit})</Label>
+            <Label>Nova Quantidade em Estoque ({translateUnit(selectedProduct?.unit ?? "")})</Label>
             <Input
               type="number"
               value={restockQty}
@@ -561,7 +562,7 @@ export default function Inventory() {
             <DialogTitle>Usar {selectedProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Label>Quantidade a remover ({selectedProduct?.unit})</Label>
+            <Label>Quantidade a remover ({translateUnit(selectedProduct?.unit ?? "")})</Label>
             <Input
               type="number"
               value={consumeQty}
@@ -720,11 +721,14 @@ export default function Inventory() {
             <div>
               <Label>Data de Validade (opcional)</Label>
               <Input
-                type="date"
+                type="text"
                 value={form.expiration_date}
                 onChange={(e) =>
                   setForm({ ...form, expiration_date: e.target.value })
                 }
+                placeholder="DD/MM/AAAA"
+                pattern="\d{2}/\d{2}/\d{4}"
+                maxLength={10}
               />
             </div>
             <DialogFooter>

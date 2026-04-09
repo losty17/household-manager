@@ -5,6 +5,49 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const UNIT_LABELS: Record<string, string> = {
+  count: "unidade",
+  grams: "gramas",
+  kg: "kg",
+  liters: "litros",
+  ml: "ml",
+  pieces: "peças",
+  bottles: "garrafas",
+  boxes: "caixas",
+  packs: "pacotes",
+};
+
+export function translateUnit(unit: string): string {
+  return UNIT_LABELS[unit] ?? unit;
+}
+
+export const FREQUENCY_LABELS: Record<string, string> = {
+  none: "Nenhuma",
+  weekly: "Semanal",
+  "bi-weekly": "Quinzenal",
+  monthly: "Mensal",
+};
+
+export function translateFrequency(freq: string): string {
+  return FREQUENCY_LABELS[freq] ?? freq;
+}
+
+/** Converts ISO date string "yyyy-MM-dd" to Brazilian "dd/MM/yyyy" */
+export function isoToBR(isoDate: string): string {
+  if (!isoDate) return "";
+  const parts = isoDate.split("-");
+  if (parts.length !== 3) return isoDate;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+/** Converts Brazilian "dd/MM/yyyy" to ISO "yyyy-MM-dd" */
+export function brToISO(brDate: string): string {
+  if (!brDate) return "";
+  const parts = brDate.split("/");
+  if (parts.length !== 3) return "";
+  return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+}
+
 function hexToRgb(hex: string): [number, number, number] | null {
   const clean = hex.replace(/^#/, "");
   if (clean.length !== 6 && clean.length !== 3) return null;

@@ -83,7 +83,7 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground">{item.category_name}</p>
                 </div>
                 <Badge variant={item.priority === 1 ? "destructive" : item.priority === 2 ? "warning" : "secondary"} className="text-xs">
-                  {item.priority === 1 ? "Urgente" : item.priority === 2 ? "Baixo" : "A Vencer"}
+                  {item.priority === 1 ? "Urgente" : item.priority === 2 ? "Estoque Baixo" : "A Vencer"}
                 </Badge>
               </div>
             ))}

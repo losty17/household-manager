@@ -41,7 +41,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                     current_stock=p.current_stock,
                     min_threshold=p.min_threshold,
                     priority=1,
-                    reason="Ended - immediate restock needed",
+                    reason="Esgotado – reposição imediata necessária",
                     suggested_quantity=suggested_qty(p, 1),
                 )
             )
@@ -60,8 +60,8 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                     min_threshold=p.min_threshold,
                     priority=2,
                     reason=(
-                        f"Low stock: {p.current_stock} {p.unit} remaining "
-                        f"(min: {p.min_threshold})"
+                        f"Estoque baixo: {p.current_stock} {p.unit} restante "
+                        f"(mín: {p.min_threshold})"
                     ),
                     suggested_quantity=suggested_qty(p, 2),
                 )
@@ -82,7 +82,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                         current_stock=p.current_stock,
                         min_threshold=p.min_threshold,
                         priority=2,
-                        reason=f"Expired on {exp.date().isoformat()} - restock needed",
+                        reason=f"Venceu em {exp.strftime('%d/%m/%Y')} – reposição necessária",
                         suggested_quantity=suggested_qty(p, 2),
                     )
                 )
@@ -102,7 +102,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                         current_stock=p.current_stock,
                         min_threshold=p.min_threshold,
                         priority=3,
-                        reason="Due for repurchase",
+                        reason="Vencimento de compra hoje",
                         suggested_quantity=suggested_qty(p, 3),
                     )
                 )
@@ -203,7 +203,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
     for p in products:
         if p.status == ProductStatus.ended:
             seen_ids.add(p.id)
-            items.append(make_item(p, 1, "Ended - immediate restock needed", 0.0))
+            items.append(make_item(p, 1, "Esgotado – reposição imediata necessária", 0.0))
 
     # Priority 2 – already low stock
     for p in products:
@@ -213,7 +213,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                 make_item(
                     p,
                     2,
-                    f"Low stock: {p.current_stock} {p.unit} remaining (min: {p.min_threshold})",
+                    f"Estoque baixo: {p.current_stock} {p.unit} restante (mín: {p.min_threshold})",
                     0.0,
                 )
             )
@@ -228,7 +228,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                     make_item(
                         p,
                         2,
-                        f"Expired on {exp.date().isoformat()} - restock needed",
+                        f"Venceu em {exp.strftime('%d/%m/%Y')} – reposição necessária",
                         0.0,
                     )
                 )
@@ -241,9 +241,9 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                 days_until = max((npd - today).total_seconds() / 86400, 0.0)
                 seen_ids.add(p.id)
                 reason = (
-                    "Due for repurchase"
+                    "Vencimento de compra hoje"
                     if days_until == 0.0
-                    else f"Due for repurchase in {round(days_until)} day(s)"
+                    else f"Compra prevista em {round(days_until)} dia(s)"
                 )
                 items.append(make_item(p, 3, reason, days_until))
 
@@ -258,7 +258,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                     make_item(
                         p,
                         3,
-                        f"Expires in {round(days_until)} day(s) on {exp.date().isoformat()} - will need restock",
+                        f"Vence em {round(days_until)} dia(s) ({exp.strftime('%d/%m/%Y')}) – reposição necessária",
                         days_until,
                     )
                 )
@@ -283,7 +283,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                     make_item(
                         p,
                         4,
-                        f"Stock will run out in ~{round(days_remaining)} day(s) at current usage rate",
+                        f"Estoque esgota em ~{round(days_remaining)} dia(s) no ritmo atual",
                         days_remaining,
                         round(suggested, 2),
                     )

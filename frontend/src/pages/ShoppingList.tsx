@@ -6,6 +6,7 @@ import {
   ShoppingListItem,
   PredictedShoppingListItem,
 } from "@/lib/api";
+import { translateUnit, isoToBR } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -134,7 +135,7 @@ export default function ShoppingList() {
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
           <Badge variant={config.color}>{config.label}</Badge>
           <span>
-            {sectionItems.length} item{sectionItems.length !== 1 ? "s" : ""}
+            {sectionItems.length} {sectionItems.length !== 1 ? "itens" : "item"}
           </span>
         </h3>
         {sectionItems.map((item) => (
@@ -161,7 +162,7 @@ export default function ShoppingList() {
                 <p className="text-xs font-medium mt-0.5">
                   Sugerido:{" "}
                   <span className="text-primary">
-                    {item.suggested_quantity} {item.unit}
+                    {item.suggested_quantity} {translateUnit(item.unit)}
                   </span>
                   {item.current_stock > 0 && (
                     <span className="text-muted-foreground ml-1">
@@ -201,7 +202,7 @@ export default function ShoppingList() {
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
           <Badge variant={config.color}>{config.label}</Badge>
           <span>
-            {sectionItems.length} item{sectionItems.length !== 1 ? "s" : ""}
+            {sectionItems.length} {sectionItems.length !== 1 ? "itens" : "item"}
           </span>
         </h3>
         {sectionItems.map((item) => (
@@ -224,7 +225,7 @@ export default function ShoppingList() {
                   <p className="text-xs font-medium mt-0.5">
                     Sugerido:{" "}
                     <span className="text-primary">
-                      {item.suggested_quantity} {item.unit}
+                      {item.suggested_quantity} {translateUnit(item.unit)}
                     </span>
                     {item.current_stock > 0 && (
                       <span className="text-muted-foreground ml-1">
@@ -232,7 +233,7 @@ export default function ShoppingList() {
                       </span>
                     )}
                     <span className="text-muted-foreground ml-1">
-                      • para {item.predicted_date}
+                      • para {isoToBR(item.predicted_date)}
                     </span>
                   </p>
                 </div>

@@ -352,7 +352,6 @@ export default function ShoppingList() {
               Restock {selected.size} item{selected.size !== 1 ? 's' : ''} using their suggested quantities?
             </DrawerDescription>
           </DrawerHeader>
-          <DrawerBody />
           <DrawerFooter>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setShowBulkConfirm(false)}>Cancel</Button>

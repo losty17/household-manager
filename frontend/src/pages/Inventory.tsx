@@ -166,7 +166,7 @@ export default function Inventory() {
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Home</h1>
-        <span className="text-sm text-muted-foreground">{new Date().toLocaleDateString()}</span>
+        <span className="text-sm text-muted-foreground mr-10">{new Date().toLocaleDateString()}</span>
       </div>
 
       {/* Stats Grid */}

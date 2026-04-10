@@ -106,6 +106,19 @@ export interface Token {
   token_type: string;
 }
 
+export const notificationsApi = {
+  getVapidPublicKey: () =>
+    api.get<{ public_key: string }>("/notifications/vapid-public-key").then(r => r.data),
+  subscribe: (sub: object) =>
+    api.post("/notifications/subscribe", sub).then(r => r.data),
+  unsubscribe: (sub: object) =>
+    api.post("/notifications/unsubscribe", sub).then(r => r.data),
+  triggerExpiryCheck: () =>
+    api.post<{ expiring_count: number; expired_count: number; sent_expiring_notification: boolean; sent_expired_notification: boolean }>(
+      "/notifications/send-expiry-check"
+    ).then(r => r.data),
+};
+
 export const authApi = {
   login: (password: string) => {
     // The OAuth2 password form requires a username field; the backend ignores it.

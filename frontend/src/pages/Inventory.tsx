@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
 import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle, ShoppingCart, MinusCircle, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import ExpiringPanel from "@/components/ExpiringPanel";
+import PushNotificationToggle from "@/components/PushNotificationToggle";
 
 type GroupBy = "none" | "category" | "expiration" | "frequency";
 type SortBy = "name" | "status" | "category" | "expiration" | "frequency" | "updated" | "stock";
@@ -254,8 +256,14 @@ export default function Inventory() {
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Home</h1>
-        <span className="text-sm text-muted-foreground mr-10">{new Date().toLocaleDateString()}</span>
+        <div className="flex items-center gap-1 mr-10">
+          <span className="text-sm text-muted-foreground">{new Date().toLocaleDateString()}</span>
+          <PushNotificationToggle />
+        </div>
       </div>
+
+      {/* Expiring Soon shortcut panel */}
+      <ExpiringPanel />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-2">

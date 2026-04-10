@@ -3,8 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.database import engine, Base, SessionLocal
-from app.routers import categories, products, shopping_list, auth
+from app.routers import categories, products, shopping_list, auth, notifications
 import app.models  # noqa: F401 – ensure models are registered with Base
+from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
+from app.services.notifications import send_expiry_notifications
 
 
 DEFAULT_CATEGORIES = [
@@ -28,6 +30,24 @@ def _seed_categories(db: Session) -> None:
     db.commit()
 
 
+def _run_daily_expiry_check() -> None:
+    db: Session = SessionLocal()
+    try:
+        send_expiry_notifications(db)
+    finally:
+        db.close()
+
+
+_scheduler = BackgroundScheduler()
+_scheduler.add_job(
+    _run_daily_expiry_check,
+    trigger="cron",
+    hour=9,
+    minute=0,
+    id="daily_expiry_check",
+)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
@@ -36,7 +56,9 @@ async def lifespan(app: FastAPI):
         _seed_categories(db)
     finally:
         db.close()
+    _scheduler.start()
     yield
+    _scheduler.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -57,6 +79,7 @@ app.include_router(categories.router, prefix="/api/v1")
 app.include_router(products.router, prefix="/api/v1")
 app.include_router(shopping_list.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(notifications.router, prefix="/api/v1")
 
 
 @app.get("/")

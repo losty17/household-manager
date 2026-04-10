@@ -8,6 +8,7 @@ from app.models.inventory_log import InventoryLog, LogAction
 from app.schemas.product import ProductCreate, ProductUpdate, ProductRead
 from app.schemas.inventory_log import InventoryLogRead
 from app.services.analytics import get_consumption_rate, update_next_purchase_date
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -34,9 +35,16 @@ def _to_read(product: Product) -> ProductRead:
         next_purchase_date=product.next_purchase_date,
         expiration_date=product.expiration_date,
         status=product.status,
+        last_price=product.last_price,
         created_at=product.created_at,
         updated_at=product.updated_at,
     )
+
+
+class RestockRequest(BaseModel):
+    new_stock: float
+    price: float | None = None
+    notes: str | None = None
 
 
 @router.get("/", response_model=list[ProductRead])
@@ -120,24 +128,26 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 @router.post("/{product_id}/restock", response_model=ProductRead)
 def restock_product(
     product_id: int,
-    new_stock: float = Query(..., description="New stock quantity after restock"),
-    notes: str | None = Query(default=None),
+    payload: RestockRequest,
     db: Session = Depends(get_db),
 ):
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
 
-    quantity_change = new_stock - product.current_stock
-    product.current_stock = new_stock
+    quantity_change = payload.new_stock - product.current_stock
+    product.current_stock = payload.new_stock
     product.last_purchased = datetime.datetime.now(datetime.timezone.utc)
     product.status = _compute_status(product)
+    if payload.price is not None:
+        product.last_price = payload.price
 
     log = InventoryLog(
         product_id=product.id,
         action=LogAction.restock,
         quantity_change=quantity_change,
-        notes=notes,
+        price=payload.price,
+        notes=payload.notes,
     )
     db.add(log)
     update_next_purchase_date(product, db)

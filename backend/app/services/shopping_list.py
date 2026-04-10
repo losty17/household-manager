@@ -7,6 +7,13 @@ from app.models.inventory_log import InventoryLog, LogAction
 from app.schemas.shopping_list import ShoppingListItem, PredictedShoppingListItem
 
 
+def _estimated_price(product: "Product", qty: float) -> float | None:
+    """Return estimated total price for *qty* units based on the product's last recorded price."""
+    if product.last_price is None:
+        return None
+    return round(product.last_price * qty, 2)
+
+
 def _ensure_utc(dt: datetime.datetime) -> datetime.datetime:
     """Return *dt* with UTC timezone attached if it is naive."""
     if dt.tzinfo is None:
@@ -33,6 +40,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
     for p in products:
         if p.status == ProductStatus.ended:
             seen_ids.add(p.id)
+            qty = suggested_qty(p, 1)
             items.append(
                 ShoppingListItem(
                     product_id=p.id,
@@ -43,7 +51,8 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                     min_threshold=p.min_threshold,
                     priority=1,
                     reason="Ended - immediate restock needed",
-                    suggested_quantity=suggested_qty(p, 1),
+                    suggested_quantity=qty,
+                    estimated_price=_estimated_price(p, qty),
                 )
             )
 
@@ -51,6 +60,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
     for p in products:
         if p.id not in seen_ids and p.current_stock < p.min_threshold:
             seen_ids.add(p.id)
+            qty = suggested_qty(p, 2)
             items.append(
                 ShoppingListItem(
                     product_id=p.id,
@@ -64,7 +74,8 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                         f"Low stock: {p.current_stock} {p.unit} remaining "
                         f"(min: {p.min_threshold})"
                     ),
-                    suggested_quantity=suggested_qty(p, 2),
+                    suggested_quantity=qty,
+                    estimated_price=_estimated_price(p, qty),
                 )
             )
 
@@ -74,6 +85,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
             exp = _ensure_utc(p.expiration_date)
             if exp <= today:
                 seen_ids.add(p.id)
+                qty = suggested_qty(p, 2)
                 items.append(
                     ShoppingListItem(
                         product_id=p.id,
@@ -84,7 +96,8 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                         min_threshold=p.min_threshold,
                         priority=2,
                         reason=f"Expired on {exp.date().isoformat()} - restock needed",
-                        suggested_quantity=suggested_qty(p, 2),
+                        suggested_quantity=qty,
+                        estimated_price=_estimated_price(p, qty),
                     )
                 )
 
@@ -94,6 +107,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
             npd = _ensure_utc(p.next_purchase_date)
             if npd <= today:
                 seen_ids.add(p.id)
+                qty = suggested_qty(p, 3)
                 items.append(
                     ShoppingListItem(
                         product_id=p.id,
@@ -104,7 +118,8 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                         min_threshold=p.min_threshold,
                         priority=3,
                         reason="Due for repurchase",
-                        suggested_quantity=suggested_qty(p, 3),
+                        suggested_quantity=qty,
+                        estimated_price=_estimated_price(p, qty),
                     )
                 )
 
@@ -185,6 +200,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
         days_until: float,
         qty: float | None = None,
     ) -> PredictedShoppingListItem:
+        actual_qty = qty if qty is not None else suggested_qty(p, priority)
         needed_at = today + datetime.timedelta(days=days_until)
         return PredictedShoppingListItem(
             product_id=p.id,
@@ -195,7 +211,8 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
             min_threshold=p.min_threshold,
             priority=priority,
             reason=reason,
-            suggested_quantity=qty if qty is not None else suggested_qty(p, priority),
+            suggested_quantity=actual_qty,
+            estimated_price=_estimated_price(p, actual_qty),
             days_until_needed=round(days_until, 1),
             predicted_date=needed_at.date().isoformat(),
         )

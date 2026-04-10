@@ -16,5 +16,6 @@ class InventoryLogRead(BaseModel):
     product_id: int
     action: str
     quantity_change: float
+    price: float | None
     notes: str | None
     created_at: datetime.datetime

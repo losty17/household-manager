@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import engine, Base, SessionLocal
 from app.routers import categories, products, shopping_list, auth, notifications
 import app.models  # noqa: F401 – ensure models are registered with Base
@@ -48,9 +49,21 @@ _scheduler.add_job(
 )
 
 
+def _run_schema_migrations() -> None:
+    """Apply additive schema changes that create_all cannot handle (existing tables)."""
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE products ADD COLUMN IF NOT EXISTS last_price FLOAT"
+            )
+        )
+        conn.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    _run_schema_migrations()
     db: Session = SessionLocal()
     try:
         _seed_categories(db)

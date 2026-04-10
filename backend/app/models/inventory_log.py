@@ -21,6 +21,7 @@ class InventoryLog(Base):
     )
     action: Mapped[LogAction] = mapped_column(Enum(LogAction), nullable=False)
     quantity_change: Mapped[float] = mapped_column(Float, default=0.0)
+    price: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

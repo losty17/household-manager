@@ -41,6 +41,7 @@ class Product(Base):
     expiration_date: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    last_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[ProductStatus] = mapped_column(
         Enum(ProductStatus), default=ProductStatus.ok
     )

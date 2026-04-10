@@ -9,9 +9,78 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
-import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle, ShoppingCart, MinusCircle } from "lucide-react";
+import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle, ShoppingCart, MinusCircle, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import ExpiringPanel from "@/components/ExpiringPanel";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
+
+type GroupBy = "none" | "category" | "expiration" | "frequency";
+type SortBy = "name" | "status" | "category" | "expiration" | "frequency" | "updated" | "stock";
+type SortDir = "asc" | "desc";
+
+const EXPIRATION_PERIOD_ORDER = ["Expired", "This Week", "This Month", "Next 3 Months", "Later", "No Expiry"];
+const FREQUENCY_ORDER: Record<string, number> = { weekly: 0, "bi-weekly": 1, monthly: 2, none: 3 };
+const FREQUENCY_LABELS: Record<string, string> = { weekly: "Weekly", "bi-weekly": "Bi-weekly", monthly: "Monthly", none: "No Recurrence" };
+const STATUS_ORDER: Record<string, number> = { ended: 0, low_stock: 1, ok: 2 };
+
+function getExpirationPeriod(expDate?: string): string {
+  if (!expDate) return "No Expiry";
+  const days = Math.ceil((new Date(expDate).getTime() - Date.now()) / 86400000);
+  if (days < 0) return "Expired";
+  if (days <= 7) return "This Week";
+  if (days <= 30) return "This Month";
+  if (days <= 90) return "Next 3 Months";
+  return "Later";
+}
+
+function sortProducts(products: Product[], sortBy: SortBy, sortDir: SortDir): Product[] {
+  const dir = sortDir === "asc" ? 1 : -1;
+  return [...products].sort((a, b) => {
+    switch (sortBy) {
+      case "name":
+        return dir * a.name.localeCompare(b.name);
+      case "status":
+        return dir * ((STATUS_ORDER[a.status] ?? 2) - (STATUS_ORDER[b.status] ?? 2));
+      case "category":
+        return dir * (a.category_name || "").localeCompare(b.category_name || "");
+      case "expiration": {
+        const aDate = a.expiration_date ? new Date(a.expiration_date).getTime() : Infinity;
+        const bDate = b.expiration_date ? new Date(b.expiration_date).getTime() : Infinity;
+        return dir * (aDate - bDate);
+      }
+      case "frequency":
+        return dir * ((FREQUENCY_ORDER[a.buying_frequency] ?? 3) - (FREQUENCY_ORDER[b.buying_frequency] ?? 3));
+      case "updated":
+        return dir * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+      case "stock":
+        return dir * (a.current_stock - b.current_stock);
+      default:
+        return 0;
+    }
+  });
+}
+
+function groupProducts(products: Product[], groupBy: GroupBy): [string, Product[]][] {
+  if (groupBy === "none") return [["", products]];
+  const map = new Map<string, Product[]>();
+  for (const p of products) {
+    const key =
+      groupBy === "category" ? (p.category_name || "Uncategorized") :
+      groupBy === "expiration" ? getExpirationPeriod(p.expiration_date) :
+      FREQUENCY_LABELS[p.buying_frequency] ?? "Other";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  const entries = Array.from(map.entries());
+  if (groupBy === "expiration") {
+    entries.sort(([a], [b]) => EXPIRATION_PERIOD_ORDER.indexOf(a) - EXPIRATION_PERIOD_ORDER.indexOf(b));
+  } else if (groupBy === "frequency") {
+    const freqLabelOrder = Object.keys(FREQUENCY_LABELS).map(k => FREQUENCY_LABELS[k]);
+    entries.sort(([a], [b]) => freqLabelOrder.indexOf(a) - freqLabelOrder.indexOf(b));
+  } else {
+    entries.sort(([a], [b]) => a.localeCompare(b));
+  }
+  return entries;
+}
 
 interface ProductFormData {
   name: string;
@@ -42,6 +111,10 @@ export default function Inventory() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [groupBy, setGroupBy] = useState<GroupBy>("none");
+  const [sortBy, setSortBy] = useState<SortBy>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
@@ -129,6 +202,18 @@ export default function Inventory() {
     const matchCategory = filterCategory === "all" || String(p.category_id) === filterCategory;
     return matchSearch && matchStatus && matchCategory;
   });
+
+  const sorted = sortProducts(filtered, sortBy, sortDir);
+  const grouped = groupProducts(sorted, groupBy);
+
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const openEdit = (product: Product) => {
     setEditingProduct(product);
@@ -251,6 +336,45 @@ export default function Inventory() {
         </Select>
       </div>
 
+      {/* Group & Sort */}
+      <div className="flex gap-2">
+        <Select value={groupBy} onValueChange={v => { setGroupBy(v as GroupBy); setCollapsedGroups(new Set()); }}>
+          <SelectTrigger className="flex-1 h-9 text-xs">
+            <SelectValue placeholder="Group by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No Grouping</SelectItem>
+            <SelectItem value="category">By Category</SelectItem>
+            <SelectItem value="expiration">By Expiry</SelectItem>
+            <SelectItem value="frequency">By Recurrence</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
+          <SelectTrigger className="flex-1 h-9 text-xs">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="status">Status</SelectItem>
+            <SelectItem value="category">Category</SelectItem>
+            <SelectItem value="expiration">Expiry Date</SelectItem>
+            <SelectItem value="frequency">Recurrence</SelectItem>
+            <SelectItem value="updated">Last Updated</SelectItem>
+            <SelectItem value="stock">Stock Level</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 w-9 p-0 flex-shrink-0"
+          onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+          aria-label={`Sort direction: ${sortDir === "asc" ? "ascending" : "descending"}. Click to toggle.`}
+          title={sortDir === "asc" ? "Ascending" : "Descending"}
+        >
+          <ArrowUpDown className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Products List */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading...</div>
@@ -260,45 +384,65 @@ export default function Inventory() {
           No items found
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(product => {
-            const cat = categories.find(c => c.id === product.category_id);
-            return (
-              <Card
-                key={product.id}
-                className="cursor-pointer active:opacity-80 transition-opacity"
-                onClick={() => setSelectedProductId(product.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {categoryIcon(cat)}{product.category_name || "Uncategorized"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 ml-2">
-                      {statusBadge(product.status)}
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                    <span>{product.current_stock} {product.unit} remaining</span>
-                    <span>Min: {product.min_threshold} {product.unit}</span>
-                  </div>
-                  <Progress
-                    value={Math.min((product.current_stock / Math.max(product.min_threshold, 1)) * 100, 100)}
-                    className={`h-1.5 ${product.status === "ended" ? "[&>div]:bg-red-500" : product.status === "low_stock" ? "[&>div]:bg-yellow-500" : "[&>div]:bg-green-500"}`}
-                  />
-                  {product.expiration_date && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Expires: {new Date(product.expiration_date).toLocaleDateString()}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="space-y-4">
+          {grouped.map(([groupKey, groupProducts]) => (
+            <div key={groupKey || "__all__"} className="space-y-2">
+              {groupBy !== "none" && (
+                <button
+                  onClick={() => toggleGroup(groupKey)}
+                  aria-label={`${collapsedGroups.has(groupKey) ? "Expand" : "Collapse"} group: ${groupKey}`}
+                  aria-expanded={!collapsedGroups.has(groupKey)}
+                  className="w-full flex items-center justify-between px-1 py-0.5 text-sm font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+                >
+                  <span>{groupKey}</span>
+                  <span className="flex items-center gap-1 normal-case font-normal">
+                    <span className="text-xs">{groupProducts.length}</span>
+                    {collapsedGroups.has(groupKey)
+                      ? <ChevronDown className="h-4 w-4" />
+                      : <ChevronUp className="h-4 w-4" />}
+                  </span>
+                </button>
+              )}
+              {!collapsedGroups.has(groupKey) && groupProducts.map(product => {
+                const cat = categories.find(c => c.id === product.category_id);
+                return (
+                  <Card
+                    key={product.id}
+                    className="cursor-pointer active:opacity-80 transition-opacity"
+                    onClick={() => setSelectedProductId(product.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {categoryIcon(cat)}{product.category_name || "Uncategorized"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          {statusBadge(product.status)}
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                        <span>{product.current_stock} {product.unit} remaining</span>
+                        <span>Min: {product.min_threshold} {product.unit}</span>
+                      </div>
+                      <Progress
+                        value={Math.min((product.current_stock / Math.max(product.min_threshold, 1)) * 100, 100)}
+                        className={`h-1.5 ${product.status === "ended" ? "[&>div]:bg-red-500" : product.status === "low_stock" ? "[&>div]:bg-yellow-500" : "[&>div]:bg-green-500"}`}
+                      />
+                      {product.expiration_date && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Expires: {new Date(product.expiration_date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 

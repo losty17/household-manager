@@ -12,6 +12,7 @@ class ProductBase(BaseModel):
     last_purchased: datetime.datetime | None = None
     next_purchase_date: datetime.datetime | None = None
     expiration_date: datetime.datetime | None = None
+    last_price: float | None = None
 
 
 class ProductCreate(ProductBase):
@@ -29,6 +30,7 @@ class ProductUpdate(BaseModel):
     next_purchase_date: datetime.datetime | None = None
     expiration_date: datetime.datetime | None = None
     status: str | None = None
+    last_price: float | None = None
 
 
 class ProductRead(ProductBase):

@@ -22,6 +22,7 @@ export default function ShoppingList() {
   const [predictDays, setPredictDays] = useState(7);
   const [restockItem, setRestockItem] = useState<ShoppingListItem | null>(null);
   const [restockQty, setRestockQty] = useState<string>("");
+  const [restockPrice, setRestockPrice] = useState<string>("");
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
 
   const { data: items = [], isLoading, refetch } = useQuery({
@@ -47,8 +48,11 @@ export default function ShoppingList() {
   });
 
   const singleBuyMutation = useMutation({
-    mutationFn: async ({ item, quantity }: { item: ShoppingListItem; quantity: number }) => {
-      await productsApi.restock(item.product_id, { new_stock: item.current_stock + quantity });
+    mutationFn: async ({ item, quantity, price }: { item: ShoppingListItem; quantity: number; price?: number }) => {
+      await productsApi.restock(item.product_id, {
+        new_stock: item.current_stock + quantity,
+        price: price,
+      });
       return item;
     },
     onSuccess: (item) => {
@@ -90,10 +94,12 @@ export default function ShoppingList() {
 
   const restockQtyValue = parseFloat(restockQty);
   const isRestockQtyValid = !isNaN(restockQtyValue) && restockQtyValue >= 0;
+  const restockPriceValue = restockPrice === "" ? undefined : parseFloat(restockPrice);
+  const isRestockPriceValid = restockPrice === "" || (!isNaN(restockPriceValue!) && restockPriceValue! >= 0);
 
   const handleRestockConfirm = () => {
-    if (!restockItem || !isRestockQtyValid) return;
-    singleBuyMutation.mutate({ item: restockItem, quantity: restockQtyValue });
+    if (!restockItem || !isRestockQtyValid || !isRestockPriceValid) return;
+    singleBuyMutation.mutate({ item: restockItem, quantity: restockQtyValue, price: restockPriceValue });
     setRestockItem(null);
   };
 
@@ -129,12 +135,16 @@ export default function ShoppingList() {
                   {item.current_stock > 0 && (
                     <span className="text-muted-foreground ml-1">(have {item.current_stock})</span>
                   )}
+                  {item.estimated_price != null && (
+                    <span className="text-muted-foreground ml-1">≈ ${item.estimated_price.toFixed(2)}</span>
+                  )}
                 </p>
               </div>
               <button
                 onClick={() => {
                   setRestockItem(item);
                   setRestockQty(String(item.suggested_quantity));
+                  setRestockPrice(item.estimated_price != null ? String(item.estimated_price) : "");
                 }}
                 disabled={singleBuyMutation.isPending || boughtItems.has(item.product_id)}
                 className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors ${
@@ -181,6 +191,9 @@ export default function ShoppingList() {
                     {item.current_stock > 0 && (
                       <span className="text-muted-foreground ml-1">(have {item.current_stock})</span>
                     )}
+                    {item.estimated_price != null && (
+                      <span className="text-muted-foreground ml-1">≈ ${item.estimated_price.toFixed(2)}</span>
+                    )}
                     <span className="text-muted-foreground ml-1">• by {item.predicted_date}</span>
                   </p>
                 </div>
@@ -194,6 +207,11 @@ export default function ShoppingList() {
 
   const loading = mode === "current" ? isLoading : isPredictLoading;
   const displayItems = mode === "current" ? items : predictedItems;
+
+  const totalEstimated = displayItems.reduce((sum, item) => {
+    return item.estimated_price != null ? sum + item.estimated_price : sum;
+  }, 0);
+  const hasAnyEstimate = displayItems.some(item => item.estimated_price != null);
 
   return (
     <div className="p-4 pb-28 space-y-4">
@@ -286,6 +304,12 @@ export default function ShoppingList() {
           {renderSection(urgentItems, 1)}
           {renderSection(lowStockItems, 2)}
           {renderSection(dueSoonItems, 3)}
+          {hasAnyEstimate && (
+            <div className="p-3 bg-muted rounded-lg text-sm font-medium flex justify-between">
+              <span className="text-muted-foreground">Estimated total</span>
+              <span>${totalEstimated.toFixed(2)}</span>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -296,11 +320,17 @@ export default function ShoppingList() {
           {renderPredictSection(predictedLowStock, 2)}
           {renderPredictSection(predictedDueSoon, 3)}
           {renderPredictSection(predictedFuture, 4)}
+          {hasAnyEstimate && (
+            <div className="p-3 bg-muted rounded-lg text-sm font-medium flex justify-between">
+              <span className="text-muted-foreground">Estimated total</span>
+              <span>${totalEstimated.toFixed(2)}</span>
+            </div>
+          )}
         </>
       )}
 
       {/* Single item restock drawer */}
-      <Drawer open={restockItem !== null} onOpenChange={(open) => { if (!open) setRestockItem(null); }}>
+      <Drawer open={restockItem !== null} onOpenChange={(open) => { if (!open) { setRestockItem(null); setRestockQty(""); setRestockPrice(""); } }}>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>How much did you buy?</DrawerTitle>
@@ -312,20 +342,43 @@ export default function ShoppingList() {
             </DrawerDescription>
           </DrawerHeader>
           <DrawerBody>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                step="any"
-                value={restockQty}
-                onChange={(e) => setRestockQty(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleRestockConfirm();
-                }}
-                className="flex-1"
-                autoFocus
-              />
-              <span className="text-sm text-muted-foreground">{restockItem?.unit}</span>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Quantity</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={restockQty}
+                    onChange={(e) => setRestockQty(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRestockConfirm();
+                    }}
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <span className="text-sm text-muted-foreground">{restockItem?.unit}</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Total price paid (optional)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="e.g. 3.99"
+                    value={restockPrice}
+                    onChange={(e) => setRestockPrice(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRestockConfirm();
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
             </div>
           </DrawerBody>
           <DrawerFooter>
@@ -334,7 +387,7 @@ export default function ShoppingList() {
               <Button
                 className="flex-1"
                 onClick={handleRestockConfirm}
-                disabled={singleBuyMutation.isPending || !isRestockQtyValid}
+                disabled={singleBuyMutation.isPending || !isRestockQtyValid || !isRestockPriceValid}
               >
                 Confirm
               </Button>

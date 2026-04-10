@@ -11,6 +11,7 @@ class ShoppingListItem(BaseModel):
     priority: int  # 1=ended, 2=low_stock, 3=due_soon
     reason: str
     suggested_quantity: float
+    estimated_price: float | None  # last_price * suggested_quantity
 
 
 class PredictedShoppingListItem(ShoppingListItem):

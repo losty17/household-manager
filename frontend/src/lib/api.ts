@@ -37,6 +37,7 @@ export interface Product {
   expiration_date?: string;
   status: "ok" | "low_stock" | "ended";
   is_low_stock: boolean;
+  last_price?: number;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +52,7 @@ export interface ShoppingListItem {
   priority: 1 | 2 | 3;
   reason: string;
   suggested_quantity: number;
+  estimated_price?: number;
 }
 
 export interface PredictedShoppingListItem extends Omit<ShoppingListItem, "priority"> {
@@ -64,6 +66,7 @@ export interface InventoryLog {
   product_id: number;
   action: "restock" | "consumed" | "ended" | "created";
   quantity_change: number;
+  price?: number;
   notes?: string;
   created_at: string;
 }
@@ -82,7 +85,7 @@ export const productsApi = {
   create: (data: Partial<Product>) => api.post<Product>("/products/", data).then(r => r.data),
   update: (id: number, data: Partial<Product>) => api.put<Product>(`/products/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/products/${id}`),
-  restock: (id: number, data: { new_stock: number; notes?: string }) =>
+  restock: (id: number, data: { new_stock: number; price?: number; notes?: string }) =>
     api.post<Product>(`/products/${id}/restock`, data).then(r => r.data),
   consume: (id: number, data: { quantity: number; notes?: string }) =>
     api.post<Product>(`/products/${id}/consume`, null, { params: data }).then(r => r.data),

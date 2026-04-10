@@ -9,6 +9,7 @@ import Inventory from "@/pages/Inventory";
 import Categories from "@/pages/Categories";
 import ShoppingList from "@/pages/ShoppingList";
 import Login from "@/pages/Login";
+import PushTest from "@/pages/PushTest";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5000, retry: 1 } },
@@ -31,10 +32,11 @@ export default function App() {
                         <ThemeToggle />
                       </div>
                       <Routes>
-                        <Route path="/" element={<Inventory />} />
-                        <Route path="/categories" element={<Categories />} />
-                        <Route path="/shopping-list" element={<ShoppingList />} />
-                      </Routes>
+                          <Route path="/" element={<Inventory />} />
+                          <Route path="/categories" element={<Categories />} />
+                          <Route path="/shopping-list" element={<ShoppingList />} />
+                          <Route path="/push-test" element={<PushTest />} />
+                        </Routes>
                       <BottomNav />
                     </div>
                   </PrivateRoute>

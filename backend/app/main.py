@@ -2,8 +2,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-from app.database import engine, Base, SessionLocal
+from alembic.config import Config
+from alembic import command as alembic_command
+from app.database import SessionLocal
 from app.routers import categories, products, shopping_list, auth, notifications
 import app.models  # noqa: F401 – ensure models are registered with Base
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
@@ -49,21 +50,45 @@ _scheduler.add_job(
 )
 
 
-def _run_schema_migrations() -> None:
-    """Apply additive schema changes that create_all cannot handle (existing tables)."""
+def _run_migrations() -> None:
+    """Apply all pending Alembic migrations at startup.
+
+    On the first startup after Alembic was introduced, the database already
+    has all tables but no alembic_version table.  We detect that and stamp
+    the DB at the current head so future migrations run incrementally rather
+    than trying to recreate existing tables.
+    """
+    from sqlalchemy import inspect, text
+    from app.database import engine
+
+    cfg = Config("/app/alembic.ini")
+
     with engine.connect() as conn:
-        conn.execute(
-            text(
-                "ALTER TABLE products ADD COLUMN IF NOT EXISTS last_price FLOAT"
+        inspector = inspect(conn)
+        has_version_table = inspector.has_table("alembic_version")
+        has_products_table = inspector.has_table("products")
+
+        if not has_version_table and has_products_table:
+            # Existing deployment before Alembic was introduced – stamp it so
+            # migration 0001 (which creates these tables) is not re-run.
+            conn.execute(
+                text(
+                    "CREATE TABLE alembic_version "
+                    "(version_num VARCHAR(32) NOT NULL, "
+                    "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+                )
             )
-        )
-        conn.commit()
+            conn.execute(
+                text("INSERT INTO alembic_version (version_num) VALUES ('0001')")
+            )
+            conn.commit()
+
+    alembic_command.upgrade(cfg, "head")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    _run_schema_migrations()
+    _run_migrations()
     db: Session = SessionLocal()
     try:
         _seed_categories(db)

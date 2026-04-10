@@ -63,7 +63,27 @@ Navigate to `/push-test` (no navigation link) to:
 - Schedule a check in 30 s / 2 min / 5 min
 - Send a local browser notification without a server round-trip
 
-## Project Structure
+## Database Migrations (Alembic)
+
+Schema changes are managed with [Alembic](https://alembic.sqlalchemy.org/). Migrations run automatically every time the backend starts (`alembic upgrade head` is called inside the FastAPI lifespan).
+
+### Adding a new column / table
+
+1. Edit (or create) the SQLAlchemy model in `backend/app/models/`.
+2. Generate a migration:
+   ```bash
+   docker compose exec backend alembic revision --autogenerate -m "describe your change"
+   ```
+3. Review the generated file in `backend/alembic/versions/` and commit it.
+4. The next `docker compose up` will apply it automatically.
+
+### Rolling back
+
+```bash
+docker compose exec backend alembic downgrade -1
+```
+
+
 
 ```
 household-manager/

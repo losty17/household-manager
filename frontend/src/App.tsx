@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -31,11 +31,6 @@ export default function App() {
                       <div className="fixed top-3 right-4 z-30">
                         <ThemeToggle />
                       </div>
-                      <Link
-                        to="/push-test"
-                        className="fixed top-3 left-4 z-30 w-2 h-2 rounded-full bg-muted-foreground opacity-10 hover:opacity-30 transition-opacity"
-                        aria-label="Push test"
-                      />
                       <Routes>
                           <Route path="/" element={<Inventory />} />
                           <Route path="/categories" element={<Categories />} />

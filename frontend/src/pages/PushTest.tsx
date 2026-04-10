@@ -92,8 +92,7 @@ export default function PushTest() {
         <h1 className="text-xl font-bold">Push Notification Test Panel</h1>
       </div>
       <p className="text-xs text-muted-foreground">
-        This page is not linked from any navigation. Access it directly via{" "}
-        <code className="bg-muted px-1 rounded">/push-test</code>.
+        Test and manage push notification subscriptions and triggers.
       </p>
 
       {/* Subscription Status */}

@@ -58,10 +58,14 @@ def _run_migrations() -> None:
     the DB at the current head so future migrations run incrementally rather
     than trying to recreate existing tables.
     """
+    import pathlib
     from sqlalchemy import inspect, text
     from app.database import engine
 
-    cfg = Config("/app/alembic.ini")
+    # Resolve alembic.ini relative to this file so the path works in any
+    # environment (Docker container, local venv, tests, etc.).
+    ini_path = str(pathlib.Path(__file__).parent.parent / "alembic.ini")
+    cfg = Config(ini_path)
 
     with engine.connect() as conn:
         inspector = inspect(conn)
@@ -69,8 +73,9 @@ def _run_migrations() -> None:
         has_products_table = inspector.has_table("products")
 
         if not has_version_table and has_products_table:
-            # Existing deployment before Alembic was introduced – stamp it so
-            # migration 0001 (which creates these tables) is not re-run.
+            # Existing deployment before Alembic was introduced – stamp it at
+            # the current head so migration 0001 (which creates these tables)
+            # is not re-run.
             conn.execute(
                 text(
                     "CREATE TABLE alembic_version "
@@ -78,10 +83,8 @@ def _run_migrations() -> None:
                     "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
                 )
             )
-            conn.execute(
-                text("INSERT INTO alembic_version (version_num) VALUES ('0001')")
-            )
             conn.commit()
+            alembic_command.stamp(cfg, "head")
 
     alembic_command.upgrade(cfg, "head")
 

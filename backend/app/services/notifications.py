@@ -52,7 +52,7 @@ def _get_all_subscriptions(db: Session) -> list[PushSubscription]:
     return db.execute(select(PushSubscription)).scalars().all()
 
 
-def _broadcast(db: Session, payload: dict, stale_endpoints: list[str] | None = None) -> None:
+def _broadcast(db: Session, payload: dict) -> None:
     """Send payload to all subscriptions, removing stale ones."""
     subscriptions = _get_all_subscriptions(db)
     stale: list[int] = []
@@ -71,8 +71,6 @@ def _broadcast(db: Session, payload: dict, stale_endpoints: list[str] | None = N
             db.delete(s)
     if stale:
         db.commit()
-    if stale_endpoints is not None:
-        stale_endpoints.extend(str(s) for s in stale)
 
 
 def get_expiring_products(db: Session, days: int = EXPIRY_WARNING_DAYS) -> list[Product]:

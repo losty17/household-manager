@@ -64,7 +64,7 @@ function groupProducts(products: Product[], groupBy: GroupBy): [string, Product[
     const key =
       groupBy === "category" ? (p.category_name || "Uncategorized") :
       groupBy === "expiration" ? getExpirationPeriod(p.expiration_date) :
-      FREQUENCY_LABELS[p.buying_frequency] ?? p.buying_frequency;
+      FREQUENCY_LABELS[p.buying_frequency] ?? "Other";
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(p);
   }
@@ -360,6 +360,7 @@ export default function Inventory() {
           size="sm"
           className="h-9 w-9 p-0 flex-shrink-0"
           onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+          aria-label={`Sort direction: ${sortDir === "asc" ? "ascending" : "descending"}. Click to toggle.`}
           title={sortDir === "asc" ? "Ascending" : "Descending"}
         >
           <ArrowUpDown className="h-4 w-4" />
@@ -381,6 +382,8 @@ export default function Inventory() {
               {groupBy !== "none" && (
                 <button
                   onClick={() => toggleGroup(groupKey)}
+                  aria-label={`${collapsedGroups.has(groupKey) ? "Expand" : "Collapse"} group: ${groupKey}`}
+                  aria-expanded={!collapsedGroups.has(groupKey)}
                   className="w-full flex items-center justify-between px-1 py-0.5 text-sm font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
                 >
                   <span>{groupKey}</span>

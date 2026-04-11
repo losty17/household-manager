@@ -1,3 +1,5 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +11,13 @@ from app.routers import categories, products, shopping_list, auth, notifications
 import app.models  # noqa: F401 – ensure models are registered with Base
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
 from app.services.notifications import send_expiry_notifications
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+    stream=sys.stdout,
+)
 
 
 DEFAULT_CATEGORIES = [

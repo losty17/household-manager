@@ -122,10 +122,17 @@ def send_expiry_notifications(db: Session) -> dict:
 
     Returns a summary dict with counts of what was found and sent.
     """
+    logger.info("Running expiry notification check")
     now = datetime.datetime.now(datetime.timezone.utc)
 
     expiring = get_expiring_products(db, EXPIRY_WARNING_DAYS)
     expired = get_expired_products(db)
+
+    logger.info(
+        "Expiry check results: %d expiring-soon product(s), %d already-expired product(s)",
+        len(expiring),
+        len(expired),
+    )
 
     sent_expiring = 0
     sent_expired = 0
@@ -148,6 +155,7 @@ def send_expiry_notifications(db: Session) -> dict:
         }
         _broadcast(db, payload)
         sent_expiring = len(expiring)
+        logger.info("Sent expiring-soon notification for %d product(s)", sent_expiring)
 
     if expired:
         lines = [f"• {p.name}" for p in expired]
@@ -160,6 +168,7 @@ def send_expiry_notifications(db: Session) -> dict:
         }
         _broadcast(db, payload)
         sent_expired = len(expired)
+        logger.info("Sent expired-items notification for %d product(s)", sent_expired)
 
     return {
         "expiring_count": len(expiring),

@@ -274,6 +274,7 @@ export default function Inventory() {
         <h1 className="text-2xl font-bold">Home</h1>
         <div className="flex items-center gap-1">
           <span className="text-sm text-muted-foreground">{new Date().toLocaleDateString()}</span>
+          <span className="text-xs text-muted-foreground font-mono opacity-60">{__COMMIT_HASH__}</span>
           <PushNotificationToggle />
           <ThemeToggle />
         </div>

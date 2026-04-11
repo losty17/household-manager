@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { productsApi, categoriesApi, shoppingListApi, Product, Category, ShoppingListItem } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
-import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle, ShoppingCart, MinusCircle, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle, ShoppingCart, MinusCircle, ArrowUpDown, ChevronDown, ChevronUp, X } from "lucide-react";
 import ExpiringPanel from "@/components/ExpiringPanel";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type GroupBy = "none" | "category" | "expiration" | "frequency";
 type SortBy = "name" | "status" | "category" | "expiration" | "frequency" | "updated" | "stock";
@@ -62,12 +64,16 @@ function sortProducts(products: Product[], sortBy: SortBy, sortDir: SortDir): Pr
 function groupProducts(products: Product[], groupBy: GroupBy): [string, Product[]][] {
   if (groupBy === "none") return [["", products]];
   const map = new Map<string, Product[]>();
+  const groupOrder = new Map<string, number>();
   for (const p of products) {
     const key =
       groupBy === "category" ? (p.category_name || "Uncategorized") :
       groupBy === "expiration" ? getExpirationPeriod(p.expiration_date) :
       FREQUENCY_LABELS[p.buying_frequency] ?? "Other";
-    if (!map.has(key)) map.set(key, []);
+    if (!map.has(key)) {
+      map.set(key, []);
+      groupOrder.set(key, groupOrder.size);
+    }
     map.get(key)!.push(p);
   }
   const entries = Array.from(map.entries());
@@ -77,7 +83,8 @@ function groupProducts(products: Product[], groupBy: GroupBy): [string, Product[
     const freqLabelOrder = Object.keys(FREQUENCY_LABELS).map(k => FREQUENCY_LABELS[k]);
     entries.sort(([a], [b]) => freqLabelOrder.indexOf(a) - freqLabelOrder.indexOf(b));
   } else {
-    entries.sort(([a], [b]) => a.localeCompare(b));
+    // Sort groups by the position of their first item in the sorted list
+    entries.sort(([a], [b]) => (groupOrder.get(a) ?? 0) - (groupOrder.get(b) ?? 0));
   }
   return entries;
 }
@@ -108,12 +115,13 @@ const NEW_CATEGORY_VALUE = "__new__";
 
 export default function Inventory() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [groupBy, setGroupBy] = useState<GroupBy>("none");
-  const [sortBy, setSortBy] = useState<SortBy>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [filterCategory, setFilterCategory] = useState(() => searchParams.get("category") || "all");
+  const [groupBy, setGroupBy] = useState<GroupBy>("category");
+  const [sortBy, setSortBy] = useState<SortBy>("updated");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
@@ -252,13 +260,22 @@ export default function Inventory() {
 
   const categoryIcon = (cat?: Category) => cat?.icon ? <span className="mr-1">{cat.icon}</span> : null;
 
+  const isFiltered = search !== "" || filterStatus !== "all" || filterCategory !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setFilterStatus("all");
+    setFilterCategory("all");
+  };
+
   return (
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Home</h1>
-        <div className="flex items-center gap-1 mr-10">
+        <div className="flex items-center gap-1">
           <span className="text-sm text-muted-foreground">{new Date().toLocaleDateString()}</span>
           <PushNotificationToggle />
+          <ThemeToggle />
         </div>
       </div>
 
@@ -298,14 +315,28 @@ export default function Inventory() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search items..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search items..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {isFiltered && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 px-3 flex-shrink-0 text-muted-foreground"
+            onClick={clearFilters}
+            aria-label="Clear filters"
+            title="Clear filters"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -547,8 +578,11 @@ export default function Inventory() {
               <Label>New Stock Quantity ({selectedProduct?.unit})</Label>
               <Input
                 type="number"
+                inputMode="decimal"
                 value={restockQty}
                 onChange={e => setRestockQty(e.target.value)}
+                onFocus={e => e.target.select()}
+                onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
                 min="0"
                 step="0.1"
               />
@@ -574,8 +608,11 @@ export default function Inventory() {
               <Label>Amount to remove ({selectedProduct?.unit})</Label>
               <Input
                 type="number"
+                inputMode="decimal"
                 value={consumeQty}
                 onChange={e => setConsumeQty(e.target.value)}
+                onFocus={e => e.target.select()}
+                onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
                 min="0.1"
                 step="0.1"
               />
@@ -632,11 +669,11 @@ export default function Inventory() {
               </div>
               <div>
                 <Label>Current Stock</Label>
-                <Input type="number" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} min="0" step="0.1" />
+                <Input type="number" inputMode="decimal" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} min="0" step="0.1" />
               </div>
               <div>
                 <Label>Min Threshold</Label>
-                <Input type="number" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} min="0" step="0.1" />
+                <Input type="number" inputMode="decimal" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} min="0" step="0.1" />
               </div>
               <div>
                 <Label>Unit</Label>
@@ -673,7 +710,6 @@ export default function Inventory() {
                   type="date"
                   value={form.expiration_date}
                   onChange={e => setForm({...form, expiration_date: e.target.value})}
-                  min={!editingProduct ? new Date().toISOString().split('T')[0] : undefined}
                 />
               </div>
             </form>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { categoriesApi, Category } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerBody, DrawerFoo
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { adaptColorForDark } from "@/lib/utils";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface CategoryFormData {
   name: string;
@@ -23,6 +25,7 @@ export default function Categories() {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const navigate = useNavigate();
   const [showDialog, setShowDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [form, setForm] = useState<CategoryFormData>(defaultForm);
@@ -75,7 +78,10 @@ export default function Categories() {
 
   return (
     <div className="p-4 pb-24 space-y-4">
-      <h1 className="text-2xl font-bold">Categories</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Categories</h1>
+        <ThemeToggle />
+      </div>
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading...</div>
@@ -87,7 +93,11 @@ export default function Categories() {
       ) : (
         <div className="space-y-2">
           {categories.map(cat => (
-            <Card key={cat.id}>
+            <Card
+              key={cat.id}
+              className="cursor-pointer active:opacity-80 transition-opacity"
+              onClick={() => navigate(`/?category=${cat.id}`)}
+            >
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div
@@ -103,7 +113,7 @@ export default function Categories() {
                     </Badge>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(cat)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -157,8 +167,15 @@ export default function Categories() {
                 />
               </div>
               <div>
-                <Label>Color (hex or CSS color)</Label>
+                <Label>Color</Label>
                 <div className="flex gap-2 items-center">
+                  <input
+                    type="color"
+                    value={form.color && form.color.startsWith("#") && form.color.length === 7 ? form.color : "#e5e7eb"}
+                    onChange={e => setForm({ ...form, color: e.target.value })}
+                    className="h-9 w-9 rounded-md border cursor-pointer flex-shrink-0 p-0.5 bg-background"
+                    title="Pick a color"
+                  />
                   <Input
                     value={form.color}
                     onChange={e => setForm({ ...form, color: e.target.value })}

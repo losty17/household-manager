@@ -577,14 +577,12 @@ export default function Inventory() {
             <div className="space-y-3">
               <Label>New Stock Quantity ({selectedProduct?.unit})</Label>
               <Input
-                type="number"
+                type="text"
                 inputMode="decimal"
                 value={restockQty}
-                onChange={e => setRestockQty(e.target.value)}
+                onChange={e => setRestockQty(e.target.value.replaceAll(',', '.'))}
                 onFocus={e => e.target.select()}
                 onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
-                min="0"
-                step="0.1"
               />
             </div>
           </DrawerBody>
@@ -607,14 +605,12 @@ export default function Inventory() {
             <div className="space-y-3">
               <Label>Amount to remove ({selectedProduct?.unit})</Label>
               <Input
-                type="number"
+                type="text"
                 inputMode="decimal"
                 value={consumeQty}
-                onChange={e => setConsumeQty(e.target.value)}
+                onChange={e => setConsumeQty(e.target.value.replaceAll(',', '.'))}
                 onFocus={e => e.target.select()}
                 onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
-                min="0.1"
-                step="0.1"
               />
             </div>
           </DrawerBody>
@@ -669,11 +665,11 @@ export default function Inventory() {
               </div>
               <div>
                 <Label>Current Stock</Label>
-                <Input type="number" inputMode="decimal" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} min="0" step="0.1" />
+                <Input type="text" inputMode="decimal" value={form.current_stock} onChange={e => setForm({...form, current_stock: e.target.value.replaceAll(',', '.')})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} />
               </div>
               <div>
                 <Label>Min Threshold</Label>
-                <Input type="number" inputMode="decimal" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} min="0" step="0.1" />
+                <Input type="text" inputMode="decimal" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value.replaceAll(',', '.')})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} />
               </div>
               <div>
                 <Label>Unit</Label>

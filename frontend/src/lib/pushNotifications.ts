@@ -15,6 +15,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   if (!("serviceWorker" in navigator)) return null;
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
+
+    // When a new service worker takes over (after skipWaiting + clients.claim),
+    // reload the page so the browser fetches the latest assets.
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+
     return reg;
   } catch (err) {
     console.error("Service worker registration failed:", err);

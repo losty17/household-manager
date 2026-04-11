@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
 import { ShoppingCart, Check, CheckSquare, Square, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const PREDICT_PERIODS = [
   { label: "1 Week", days: 7 },
@@ -215,13 +216,16 @@ export default function ShoppingList() {
 
   return (
     <div className="p-4 pb-28 space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => mode === "current" ? refetch() : refetchPredict()}>
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ShoppingCart className="h-6 w-6" /> Shopping List
-        </h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => mode === "current" ? refetch() : refetchPredict()}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <ShoppingCart className="h-6 w-6" /> Shopping List
+          </h1>
+        </div>
+        <ThemeToggle />
       </div>
 
       {/* Mode toggle */}
@@ -348,12 +352,15 @@ export default function ShoppingList() {
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
+                    inputMode="decimal"
                     min={0}
                     step="any"
                     value={restockQty}
                     onChange={(e) => setRestockQty(e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleRestockConfirm();
+                      if (e.key === ' ') e.preventDefault();
+                      if (e.key === 'Enter') handleRestockConfirm();
                     }}
                     className="flex-1"
                     autoFocus
@@ -367,13 +374,16 @@ export default function ShoppingList() {
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
                     type="number"
+                    inputMode="decimal"
                     min={0}
                     step="0.01"
                     placeholder="e.g. 3.99"
                     value={restockPrice}
                     onChange={(e) => setRestockPrice(e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleRestockConfirm();
+                      if (e.key === ' ') e.preventDefault();
+                      if (e.key === 'Enter') handleRestockConfirm();
                     }}
                     className="flex-1"
                   />

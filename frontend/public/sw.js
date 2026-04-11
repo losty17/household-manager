@@ -14,8 +14,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Household Manager";
   const options = {
     body: payload.body || "",
-    icon: "/vite.svg",
-    badge: "/vite.svg",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
     tag: payload.tag || "household-manager",
     data: { url: payload.url || "/" },
     requireInteraction: false,

@@ -1,6 +1,19 @@
 /* eslint-disable no-restricted-globals */
 /// <reference lib="webworker" />
 
+// Skip the "waiting" phase immediately when a new version is installed.
+// This means the new service worker takes over as soon as it installs, without
+// waiting for all existing tabs to close.
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+// After taking over, claim all open clients so they receive the new version
+// without needing a full manual restart.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 

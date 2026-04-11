@@ -11,10 +11,29 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+// Module-level flag so the controllerchange listener is only ever registered once,
+// and a reload loop cannot occur even if registerServiceWorker is called again.
+let swUpdateListenerRegistered = false;
+let reloading = false;
+
+function registerUpdateListener() {
+  if (swUpdateListenerRegistered) return;
+  swUpdateListenerRegistered = true;
+
+  // When a new service worker takes over (after skipWaiting + clients.claim),
+  // reload the page so the browser fetches the latest assets.
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+}
+
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
+    registerUpdateListener();
     return reg;
   } catch (err) {
     console.error("Service worker registration failed:", err);

@@ -351,12 +351,12 @@ export default function ShoppingList() {
                 <label className="text-xs text-muted-foreground mb-1 block">Quantity</label>
                 <div className="flex items-center gap-2">
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
                     min={0}
                     step="any"
                     value={restockQty}
-                    onChange={(e) => setRestockQty(e.target.value)}
+                    onChange={(e) => setRestockQty(e.target.value.replaceAll(',', '.'))}
                     onFocus={(e) => e.target.select()}
                     onKeyDown={(e) => {
                       if (e.key === ' ') e.preventDefault();
@@ -373,13 +373,13 @@ export default function ShoppingList() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">$</span>
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
                     min={0}
                     step="0.01"
                     placeholder="e.g. 3.99"
                     value={restockPrice}
-                    onChange={(e) => setRestockPrice(e.target.value)}
+                    onChange={(e) => setRestockPrice(e.target.value.replaceAll(',', '.'))}
                     onFocus={(e) => e.target.select()}
                     onKeyDown={(e) => {
                       if (e.key === ' ') e.preventDefault();

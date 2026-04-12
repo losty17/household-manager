@@ -95,6 +95,7 @@ interface ProductFormData {
   new_category_name: string;
   current_stock: string;
   min_threshold: string;
+  last_price: string;
   unit: string;
   buying_frequency: string;
   expiration_date: string;
@@ -106,6 +107,7 @@ const defaultForm: ProductFormData = {
   new_category_name: "",
   current_stock: "0",
   min_threshold: "0",
+  last_price: "",
   unit: "count",
   buying_frequency: "none",
   expiration_date: "",
@@ -129,6 +131,7 @@ export default function Inventory() {
   const [showConsumeDialog, setShowConsumeDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [restockQty, setRestockQty] = useState("0");
+  const [restockPrice, setRestockPrice] = useState("");
   const [consumeQty, setConsumeQty] = useState("1");
   const [form, setForm] = useState<ProductFormData>(defaultForm);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -173,11 +176,15 @@ export default function Inventory() {
   });
 
   const restockMutation = useMutation({
-    mutationFn: (id: number) => productsApi.restock(id, { new_stock: parseFloat(restockQty) }),
+    mutationFn: (id: number) => {
+      const parsedPrice = restockPrice.trim() === "" ? undefined : parseFloat(restockPrice);
+      return productsApi.restock(id, { new_stock: parseFloat(restockQty), price: Number.isNaN(parsedPrice) ? undefined : parsedPrice });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
       setShowRestockDialog(false);
+      setRestockPrice("");
     },
   });
 
@@ -236,6 +243,7 @@ export default function Inventory() {
       new_category_name: "",
       current_stock: String(product.current_stock),
       min_threshold: String(product.min_threshold),
+      last_price: product.last_price != null ? String(product.last_price) : "",
       unit: product.unit,
       buying_frequency: product.buying_frequency,
       expiration_date: product.expiration_date ? product.expiration_date.split("T")[0] : "",
@@ -251,6 +259,7 @@ export default function Inventory() {
       category_id: categoryId,
       current_stock: parseFloat(form.current_stock),
       min_threshold: parseFloat(form.min_threshold),
+      last_price: form.last_price.trim() === "" ? undefined : parseFloat(form.last_price),
       unit: form.unit,
       buying_frequency: form.buying_frequency as Product["buying_frequency"],
       expiration_date: form.expiration_date || undefined,
@@ -524,6 +533,10 @@ export default function Inventory() {
                         {selectedProduct.category_name}
                       </p>
                     </div>
+                    <div className="bg-muted rounded-md p-2">
+                      <p className="text-xs text-muted-foreground">Last Price</p>
+                      <p className="font-semibold">{selectedProduct.last_price != null ? `$${selectedProduct.last_price.toFixed(2)}` : "—"}</p>
+                    </div>
                   </div>
                   {selectedProduct.next_purchase_date && (
                     <p className="text-xs text-muted-foreground">
@@ -574,7 +587,11 @@ export default function Inventory() {
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
-                    onClick={() => { setRestockQty(String(selectedProduct.min_threshold * 2)); setShowRestockDialog(true); }}
+                    onClick={() => {
+                      setRestockQty(String(selectedProduct.min_threshold * 2));
+                      setRestockPrice(selectedProduct.last_price != null ? String(selectedProduct.last_price) : "");
+                      setShowRestockDialog(true);
+                    }}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" /> Restock
                   </Button>
@@ -625,6 +642,15 @@ export default function Inventory() {
                 inputMode="decimal"
                 value={restockQty}
                 onChange={e => setRestockQty(e.target.value.replaceAll(',', '.'))}
+                onFocus={e => e.target.select()}
+                onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
+              />
+              <Label>Total price paid (optional)</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={restockPrice}
+                onChange={e => setRestockPrice(e.target.value.replaceAll(',', '.'))}
                 onFocus={e => e.target.select()}
                 onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
               />
@@ -714,6 +740,10 @@ export default function Inventory() {
               <div>
                 <Label>Min Threshold</Label>
                 <Input type="text" inputMode="decimal" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value.replaceAll(',', '.')})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} />
+              </div>
+              <div>
+                <Label>Last Price (optional)</Label>
+                <Input type="text" inputMode="decimal" value={form.last_price} onChange={e => setForm({...form, last_price: e.target.value.replaceAll(',', '.')})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} />
               </div>
               <div>
                 <Label>Unit</Label>

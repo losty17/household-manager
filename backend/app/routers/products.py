@@ -14,7 +14,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 def _compute_status(product: Product) -> ProductStatus:
-    if product.status == ProductStatus.ended:
+    if product.current_stock <= 0:
         return ProductStatus.ended
     if product.current_stock < product.min_threshold:
         return ProductStatus.low_stock

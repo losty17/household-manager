@@ -36,6 +36,14 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
             return p.min_threshold * 2
         return max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
 
+    def expiring_restock_qty(p: Product, priority: int) -> float:
+        base_qty = suggested_qty(p, priority)
+        if base_qty > 0:
+            return base_qty
+        if p.current_stock > 0:
+            return p.current_stock
+        return 1.0
+
     # Priority 1 – ended
     for p in products:
         if p.status == ProductStatus.ended:
@@ -85,7 +93,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
             exp = _ensure_utc(p.expiration_date)
             if exp <= today:
                 seen_ids.add(p.id)
-                qty = suggested_qty(p, 2)
+                qty = expiring_restock_qty(p, 2)
                 items.append(
                     ShoppingListItem(
                         product_id=p.id,
@@ -227,6 +235,14 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
             return p.min_threshold * 2
         return max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
 
+    def expiring_restock_qty(p: Product, priority: int) -> float:
+        base_qty = suggested_qty(p, priority)
+        if base_qty > 0:
+            return base_qty
+        if p.current_stock > 0:
+            return p.current_stock
+        return 1.0
+
     def make_item(
         p: Product,
         priority: int,
@@ -282,6 +298,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                         2,
                         f"Expired on {exp.date().isoformat()} - restock needed",
                         0.0,
+                        expiring_restock_qty(p, 2),
                     )
                 )
 
@@ -352,6 +369,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
                         3,
                         f"Expires in {round(days_until)} day(s) on {exp.date().isoformat()} - will need restock",
                         days_until,
+                        expiring_restock_qty(p, 3),
                     )
                 )
 

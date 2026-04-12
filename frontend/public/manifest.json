@@ -1,6 +1,6 @@
 {
   "name": "Household Manager",
-  "short_name": "household",
+  "short_name": "Household",
   "description": "Mobile-first household inventory and shopping manager.",
   "start_url": "/",
   "display": "standalone",

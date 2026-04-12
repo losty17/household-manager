@@ -3,6 +3,7 @@
 Handles VAPID key management, subscription storage helpers, and sending
 Web Push notifications to subscribed browsers.
 """
+
 import json
 import logging
 import os
@@ -11,32 +12,16 @@ import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from pywebpush import webpush, WebPushException  # type: ignore
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from app.models.product import Product
 from app.models.push_subscription import PushSubscription
 
 logger = logging.getLogger(__name__)
 
-def _normalize_private_key_from_env(raw_key: str) -> str:
-    """Normalize PEM key loaded from env variables.
 
-    Supports values copied from `.env` with literal `\n` sequences.
-    """
-    key = raw_key.strip()
-    if (key.startswith('"') and key.endswith('"')) or (
-        key.startswith("'") and key.endswith("'")
-    ):
-        key = key[1:-1]
-    if "\\n" in key:
-        key = key.replace("\\n", "\n")
-    return key
-
-
-VAPID_PRIVATE_KEY = _normalize_private_key_from_env(os.getenv("VAPID_PRIVATE_KEY", ""))
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_CLAIMS_SUB = os.getenv("VAPID_CLAIMS_SUB", "mailto:admin@household-manager.local")
-_VAPID_KEY_VALIDATED = False
 
 # Days before expiration to start warning
 EXPIRY_WARNING_DAYS = 3
@@ -44,20 +29,10 @@ EXPIRY_WARNING_DAYS = 3
 
 def _send_push(subscription: PushSubscription, payload: dict) -> None:
     """Send a single Web Push notification."""
-    global _VAPID_KEY_VALIDATED
     if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
         logger.warning("VAPID keys not configured – skipping push notification.")
         return
-    if not _VAPID_KEY_VALIDATED:
-        try:
-            load_pem_private_key(VAPID_PRIVATE_KEY.encode("utf-8"), password=None)
-            _VAPID_KEY_VALIDATED = True
-        except ValueError as exc:
-            logger.error(
-                "Invalid VAPID private key format. Ensure VAPID_PRIVATE_KEY is a PEM key "
-                "with real newlines (or literal \\n in .env)."
-            )
-            raise ValueError("Invalid VAPID private key format") from exc
+
     try:
         webpush(
             subscription_info={
@@ -72,7 +47,9 @@ def _send_push(subscription: PushSubscription, payload: dict) -> None:
             vapid_claims={"sub": VAPID_CLAIMS_SUB},
         )
     except WebPushException as exc:
-        logger.error("WebPush failed for endpoint %s: %s", subscription.endpoint[:40], exc)
+        logger.error(
+            "WebPush failed for endpoint %s: %s", subscription.endpoint[:40], exc
+        )
         raise
 
 
@@ -124,7 +101,9 @@ def _broadcast(db: Session, payload: dict) -> dict[str, int]:
     }
 
 
-def get_expiring_products(db: Session, days: int = EXPIRY_WARNING_DAYS) -> list[Product]:
+def get_expiring_products(
+    db: Session, days: int = EXPIRY_WARNING_DAYS
+) -> list[Product]:
     """Return products expiring within *days* days that still have stock."""
     now = datetime.datetime.now(datetime.timezone.utc)
     cutoff = now + datetime.timedelta(days=days)

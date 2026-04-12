@@ -139,7 +139,7 @@ def restock_product(
     product.current_stock = payload.new_stock
     product.last_purchased = datetime.datetime.now(datetime.timezone.utc)
     product.status = _compute_status(product)
-    if payload.price is not None and quantity_change > 0:
+    if payload.price is not None and quantity_change > 1e-9:
         product.last_price = round(payload.price / quantity_change, 6)
 
     log = InventoryLog(

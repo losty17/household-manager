@@ -593,7 +593,7 @@ export default function Inventory() {
                       setRestockQty(String(targetStock));
                       setRestockPrice(
                         selectedProduct.last_price != null && qtyToAdd > 0
-                          ? String(Math.round(selectedProduct.last_price * qtyToAdd * 100) / 100)
+                          ? (selectedProduct.last_price * qtyToAdd).toFixed(2)
                           : ""
                       );
                       setShowRestockDialog(true);

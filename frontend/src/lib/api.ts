@@ -61,6 +61,15 @@ export interface PredictedShoppingListItem extends Omit<ShoppingListItem, "prior
   predicted_date: string;
 }
 
+export interface ConsumptionStats {
+  product_id: number;
+  avg_daily_consumption: number;
+  estimated_days_remaining: number | null;
+  suggested_min_threshold: number | null;
+  detected_recurrence_days: number | null;
+  last_calculated: string;
+}
+
 export interface InventoryLog {
   id: number;
   product_id: number;
@@ -90,7 +99,7 @@ export const productsApi = {
   consume: (id: number, data: { quantity: number; notes?: string }) =>
     api.post<Product>(`/products/${id}/consume`, null, { params: data }).then(r => r.data),
   markEnded: (id: number) => api.post<Product>(`/products/${id}/mark-ended`).then(r => r.data),
-  getConsumptionRate: (id: number) => api.get(`/products/${id}/consumption-rate`).then(r => r.data),
+  getConsumptionRate: (id: number) => api.get<ConsumptionStats>(`/products/${id}/consumption-rate`).then(r => r.data),
 };
 
 export const shoppingListApi = {

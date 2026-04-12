@@ -123,7 +123,17 @@ export const notificationsApi = {
   unsubscribe: (sub: object) =>
     api.post("/notifications/unsubscribe", sub).then(r => r.data),
   triggerExpiryCheck: () =>
-    api.post<{ expiring_count: number; expired_count: number; sent_expiring_notification: boolean; sent_expired_notification: boolean }>(
+    api.post<{
+      expiring_count: number;
+      expired_count: number;
+      sent_expiring_notification: boolean;
+      sent_expired_notification: boolean;
+      subscriptions_total: number;
+      push_attempted: number;
+      push_delivered: number;
+      push_failed: number;
+      subscriptions_removed_stale: number;
+    }>(
       "/notifications/send-expiry-check"
     ).then(r => r.data),
 };

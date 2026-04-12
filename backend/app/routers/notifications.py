@@ -1,5 +1,7 @@
 """Notifications router – push subscription management and manual triggers."""
+
 import os
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
@@ -90,5 +92,15 @@ def trigger_expiry_check(
     _: None = Depends(verify_token),
 ):
     """Immediately run the expiry notification check and send push notifications."""
-    result = send_expiry_notifications(db)
+    try:
+        result = send_expiry_notifications(db)
+    except Exception as exc:
+        print(exc)
+        # print stack trace
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send expiry notifications: {exc}",
+        ) from exc
+
     return result

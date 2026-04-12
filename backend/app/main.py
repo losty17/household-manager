@@ -12,12 +12,21 @@ import app.models  # noqa: F401 – ensure models are registered with Base
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
 from app.services.notifications import send_expiry_notifications
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+_APP_LOG_FORMATTER = logging.Formatter(
+    fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%S",
-    stream=sys.stdout,
 )
+_APP_LOG_HANDLER = logging.StreamHandler(sys.stdout)
+_APP_LOG_HANDLER.setFormatter(_APP_LOG_FORMATTER)
+
+app_logger = logging.getLogger("app")
+app_logger.setLevel(logging.INFO)
+if not any(
+    isinstance(handler, logging.StreamHandler)
+    and getattr(handler, "stream", None) is sys.stdout
+    for handler in app_logger.handlers
+):
+    app_logger.addHandler(_APP_LOG_HANDLER)
 
 
 DEFAULT_CATEGORIES = [
@@ -124,6 +133,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    response = await call_next(request)
+    app_logger.info(f"{request.method} {request.url} {response.status_code}")
+    return response
+
 
 app.include_router(categories.router, prefix="/api/v1")
 app.include_router(products.router, prefix="/api/v1")

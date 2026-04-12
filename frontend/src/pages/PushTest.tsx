@@ -12,6 +12,11 @@ interface CheckResult {
   expired_count: number;
   sent_expiring_notification: boolean;
   sent_expired_notification: boolean;
+  subscriptions_total?: number;
+  push_attempted?: number;
+  push_delivered?: number;
+  push_failed?: number;
+  subscriptions_removed_stale?: number;
 }
 
 export default function PushTest() {
@@ -59,7 +64,8 @@ export default function PushTest() {
     onSuccess: (data: CheckResult) => {
       addLog(
         `Expiry check done – expiring: ${data.expiring_count}, expired: ${data.expired_count}. ` +
-        `Sent expiring: ${data.sent_expiring_notification}, sent expired: ${data.sent_expired_notification}`,
+        `Sent expiring: ${data.sent_expiring_notification}, sent expired: ${data.sent_expired_notification}. ` +
+        `Subs: ${data.subscriptions_total ?? 0}, attempted: ${data.push_attempted ?? 0}, delivered: ${data.push_delivered ?? 0}, failed: ${data.push_failed ?? 0}`,
         true
       );
     },

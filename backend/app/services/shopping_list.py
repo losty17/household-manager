@@ -123,6 +123,40 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
                     )
                 )
 
+    # Priority 3 – stock will run out within IMMEDIATE_DAYS based on consumption rate
+    IMMEDIATE_DAYS = 3
+    remaining_ids = [p.id for p in products if p.id not in seen_ids]
+    if remaining_ids:
+        rates = _avg_daily_consumption_bulk(remaining_ids, db)
+        product_map = {p.id: p for p in products}
+        for pid in remaining_ids:
+            p = product_map[pid]
+            rate = rates.get(pid, 0.0)
+            if rate <= 0:
+                continue
+            days_remaining = p.current_stock / rate
+            if days_remaining <= IMMEDIATE_DAYS:
+                seen_ids.add(pid)
+                qty = max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
+                items.append(
+                    ShoppingListItem(
+                        product_id=p.id,
+                        name=p.name,
+                        category_name=category_name(p),
+                        unit=p.unit,
+                        current_stock=p.current_stock,
+                        min_threshold=p.min_threshold,
+                        priority=3,
+                        reason=(
+                            "Running out in ~"
+                            + (str(int(r)) if (r := round(days_remaining, 1)) % 1 == 0 else str(r))
+                            + " day(s) at current usage rate"
+                        ),
+                        suggested_quantity=qty,
+                        estimated_price=_estimated_price(p, qty),
+                    )
+                )
+
     items.sort(key=lambda x: (x.priority, x.name))
     return items
 

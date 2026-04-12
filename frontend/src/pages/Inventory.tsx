@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { productsApi, categoriesApi, shoppingListApi, Product, Category, ShoppingListItem } from "@/lib/api";
+import { productsApi, categoriesApi, shoppingListApi, Product, Category, ShoppingListItem, ConsumptionStats } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,11 @@ export default function Inventory() {
   const { data: products = [], isLoading } = useQuery<Product[]>({ queryKey: ["products"], queryFn: () => productsApi.list() });
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["categories"], queryFn: categoriesApi.list });
   const { data: shoppingList = [] } = useQuery<ShoppingListItem[]>({ queryKey: ["shopping-list"], queryFn: shoppingListApi.get });
+  const { data: consumptionStats } = useQuery<ConsumptionStats>({
+    queryKey: ["consumption-rate", selectedProductId],
+    queryFn: () => productsApi.getConsumptionRate(selectedProductId!),
+    enabled: selectedProductId !== null,
+  });
 
   const selectedProduct = products.find(p => p.id === selectedProductId) ?? null;
 
@@ -524,6 +529,44 @@ export default function Inventory() {
                     <p className="text-xs text-muted-foreground">
                       Next purchase: {new Date(selectedProduct.next_purchase_date).toLocaleDateString()}
                     </p>
+                  )}
+                  {/* Usage & predictions panel */}
+                  {consumptionStats && consumptionStats.avg_daily_consumption > 0 && (
+                    <div className="rounded-md border p-3 space-y-2 text-sm">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Usage insights</p>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Avg daily usage</span>
+                        <span className="font-medium">
+                          {consumptionStats.avg_daily_consumption.toFixed(2)} {selectedProduct.unit}/day
+                        </span>
+                      </div>
+                      {consumptionStats.estimated_days_remaining !== null && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Est. days remaining</span>
+                          <span className={`font-medium ${consumptionStats.estimated_days_remaining <= 3 ? "text-red-600 dark:text-red-400" : consumptionStats.estimated_days_remaining <= 7 ? "text-yellow-600 dark:text-yellow-400" : ""}`}>
+                            ~{consumptionStats.estimated_days_remaining} days
+                          </span>
+                        </div>
+                      )}
+                      {consumptionStats.suggested_min_threshold !== null &&
+                        consumptionStats.suggested_min_threshold !== selectedProduct.min_threshold && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Suggested minimum</span>
+                          <span className="font-medium text-blue-600 dark:text-blue-400">
+                            {consumptionStats.suggested_min_threshold} {selectedProduct.unit}
+                          </span>
+                        </div>
+                      )}
+                      {consumptionStats.detected_recurrence_days !== null &&
+                        selectedProduct.buying_frequency === "none" && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Detected buy interval</span>
+                          <span className="font-medium text-blue-600 dark:text-blue-400">
+                            ~{Math.round(consumptionStats.detected_recurrence_days)} days
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </DrawerBody>

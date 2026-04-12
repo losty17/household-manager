@@ -534,8 +534,8 @@ export default function Inventory() {
                       </p>
                     </div>
                     <div className="bg-muted rounded-md p-2">
-                      <p className="text-xs text-muted-foreground">Last Price</p>
-                      <p className="font-semibold">{selectedProduct.last_price != null ? `$${selectedProduct.last_price.toFixed(2)}` : "—"}</p>
+                      <p className="text-xs text-muted-foreground">Last Price (per {selectedProduct.unit})</p>
+                      <p className="font-semibold">{selectedProduct.last_price != null ? `$${selectedProduct.last_price.toFixed(4)}` : "—"}</p>
                     </div>
                   </div>
                   {selectedProduct.next_purchase_date && (
@@ -588,8 +588,14 @@ export default function Inventory() {
                   <Button
                     className="flex-1"
                     onClick={() => {
-                      setRestockQty(String(selectedProduct.min_threshold * 2));
-                      setRestockPrice(selectedProduct.last_price != null ? String(selectedProduct.last_price) : "");
+                      const targetStock = selectedProduct.min_threshold * 2;
+                      const qtyToAdd = targetStock - selectedProduct.current_stock;
+                      setRestockQty(String(targetStock));
+                      setRestockPrice(
+                        selectedProduct.last_price != null && qtyToAdd > 0
+                          ? (selectedProduct.last_price * qtyToAdd).toFixed(2)
+                          : ""
+                      );
                       setShowRestockDialog(true);
                     }}
                   >
@@ -742,7 +748,7 @@ export default function Inventory() {
                 <Input type="text" inputMode="decimal" value={form.min_threshold} onChange={e => setForm({...form, min_threshold: e.target.value.replaceAll(',', '.')})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} />
               </div>
               <div>
-                <Label>Last Price (optional)</Label>
+                <Label>Last Unit Price (optional)</Label>
                 <Input type="text" inputMode="decimal" value={form.last_price} onChange={e => setForm({...form, last_price: e.target.value.replaceAll(',', '.')})} onFocus={e => e.target.select()} onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }} />
               </div>
               <div>

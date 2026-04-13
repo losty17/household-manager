@@ -229,6 +229,9 @@ export default function Inventory() {
       productsApi.updateLog(params.productId, params.logId, params.data),
     onSuccess: (_data, params) => {
       queryClient.invalidateQueries({ queryKey: ["product-logs", params.productId] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
+      queryClient.invalidateQueries({ queryKey: ["consumption-rate", params.productId] });
       setShowEditLogDialog(false);
       setEditingLog(null);
     },
@@ -239,6 +242,9 @@ export default function Inventory() {
       productsApi.deleteLog(params.productId, params.logId),
     onSuccess: (_data, params) => {
       queryClient.invalidateQueries({ queryKey: ["product-logs", params.productId] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
+      queryClient.invalidateQueries({ queryKey: ["consumption-rate", params.productId] });
     },
   });
 

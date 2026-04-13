@@ -1,10 +1,11 @@
 import datetime
 from pydantic import BaseModel, ConfigDict
+from app.models.inventory_log import LogAction
 
 
 class InventoryLogCreate(BaseModel):
     product_id: int
-    action: str
+    action: LogAction
     quantity_change: float = 0.0
     notes: str | None = None
 
@@ -14,7 +15,7 @@ class InventoryLogRead(BaseModel):
 
     id: int
     product_id: int
-    action: str
+    action: LogAction
     quantity_change: float
     price: float | None
     notes: str | None
@@ -22,7 +23,7 @@ class InventoryLogRead(BaseModel):
 
 
 class InventoryLogUpdate(BaseModel):
-    action: str | None = None
+    action: LogAction | None = None
     quantity_change: float | None = None
     price: float | None = None
     notes: str | None = None

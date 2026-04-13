@@ -1,7 +1,7 @@
 import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.database import get_db
 from app.models.product import Product, ProductStatus
 from app.models.inventory_log import InventoryLog, LogAction
@@ -39,6 +39,20 @@ def _to_read(product: Product) -> ProductRead:
         created_at=product.created_at,
         updated_at=product.updated_at,
     )
+
+
+def _recalculate_product_from_logs(product: Product, db: Session) -> None:
+    total_quantity = (
+        db.execute(
+            select(func.coalesce(func.sum(InventoryLog.quantity_change), 0.0)).where(
+                InventoryLog.product_id == product.id
+            )
+        )
+        .scalar_one()
+    )
+    product.current_stock = max(float(total_quantity), 0.0)
+    product.status = _compute_status(product)
+    update_next_purchase_date(product, db)
 
 
 class RestockRequest(BaseModel):
@@ -252,14 +266,12 @@ def update_product_log(
 
     changes = payload.model_dump(exclude_unset=True)
     if "action" in changes:
-        try:
-            log.action = LogAction(changes.pop("action"))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid log action.")
+        log.action = changes.pop("action")
 
     for field, value in changes.items():
         setattr(log, field, value)
 
+    _recalculate_product_from_logs(product, db)
     db.commit()
     db.refresh(log)
     return log
@@ -280,4 +292,6 @@ def delete_product_log(
         raise HTTPException(status_code=404, detail="Log not found.")
 
     db.delete(log)
+    db.flush()
+    _recalculate_product_from_logs(product, db)
     db.commit()

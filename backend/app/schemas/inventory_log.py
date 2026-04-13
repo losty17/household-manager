@@ -19,3 +19,10 @@ class InventoryLogRead(BaseModel):
     price: float | None
     notes: str | None
     created_at: datetime.datetime
+
+
+class InventoryLogUpdate(BaseModel):
+    action: str | None = None
+    quantity_change: float | None = None
+    price: float | None = None
+    notes: str | None = None

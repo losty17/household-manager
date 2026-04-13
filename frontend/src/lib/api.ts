@@ -80,6 +80,13 @@ export interface InventoryLog {
   created_at: string;
 }
 
+export interface InventoryLogUpdate {
+  action?: "restock" | "consumed" | "ended" | "created";
+  quantity_change?: number;
+  price?: number;
+  notes?: string;
+}
+
 // API functions
 export const categoriesApi = {
   list: () => api.get<Category[]>("/categories/").then(r => r.data),
@@ -100,6 +107,11 @@ export const productsApi = {
     api.post<Product>(`/products/${id}/consume`, null, { params: data }).then(r => r.data),
   markEnded: (id: number) => api.post<Product>(`/products/${id}/mark-ended`).then(r => r.data),
   getConsumptionRate: (id: number) => api.get<ConsumptionStats>(`/products/${id}/consumption-rate`).then(r => r.data),
+  getLogs: (id: number) => api.get<InventoryLog[]>(`/products/${id}/logs`).then(r => r.data),
+  updateLog: (productId: number, logId: number, data: InventoryLogUpdate) =>
+    api.put<InventoryLog>(`/products/${productId}/logs/${logId}`, data).then(r => r.data),
+  deleteLog: (productId: number, logId: number) =>
+    api.delete(`/products/${productId}/logs/${logId}`),
 };
 
 export const shoppingListApi = {

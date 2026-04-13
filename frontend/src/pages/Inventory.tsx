@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { productsApi, categoriesApi, shoppingListApi, Product, Category, ShoppingListItem, ConsumptionStats } from "@/lib/api";
+import { productsApi, categoriesApi, shoppingListApi, Product, Category, ShoppingListItem, ConsumptionStats, InventoryLog } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -129,10 +129,16 @@ export default function Inventory() {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
   const [showConsumeDialog, setShowConsumeDialog] = useState(false);
+  const [showEditLogDialog, setShowEditLogDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [restockQty, setRestockQty] = useState("0");
   const [restockPrice, setRestockPrice] = useState("");
   const [consumeQty, setConsumeQty] = useState("1");
+  const [editingLog, setEditingLog] = useState<InventoryLog | null>(null);
+  const [logAction, setLogAction] = useState<InventoryLog["action"]>("created");
+  const [logQuantityChange, setLogQuantityChange] = useState("0");
+  const [logPrice, setLogPrice] = useState("");
+  const [logNotes, setLogNotes] = useState("");
   const [form, setForm] = useState<ProductFormData>(defaultForm);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -142,6 +148,11 @@ export default function Inventory() {
   const { data: consumptionStats } = useQuery<ConsumptionStats>({
     queryKey: ["consumption-rate", selectedProductId],
     queryFn: () => productsApi.getConsumptionRate(selectedProductId!),
+    enabled: selectedProductId !== null,
+  });
+  const { data: productLogs = [], isLoading: isLogsLoading } = useQuery<InventoryLog[]>({
+    queryKey: ["product-logs", selectedProductId],
+    queryFn: () => productsApi.getLogs(selectedProductId!),
     enabled: selectedProductId !== null,
   });
 
@@ -213,6 +224,30 @@ export default function Inventory() {
     },
   });
 
+  const updateLogMutation = useMutation({
+    mutationFn: (params: { productId: number; logId: number; data: { action: InventoryLog["action"]; quantity_change: number; price?: number; notes?: string } }) =>
+      productsApi.updateLog(params.productId, params.logId, params.data),
+    onSuccess: (_data, params) => {
+      queryClient.invalidateQueries({ queryKey: ["product-logs", params.productId] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
+      queryClient.invalidateQueries({ queryKey: ["consumption-rate", params.productId] });
+      setShowEditLogDialog(false);
+      setEditingLog(null);
+    },
+  });
+
+  const deleteLogMutation = useMutation({
+    mutationFn: (params: { productId: number; logId: number }) =>
+      productsApi.deleteLog(params.productId, params.logId),
+    onSuccess: (_data, params) => {
+      queryClient.invalidateQueries({ queryKey: ["product-logs", params.productId] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
+      queryClient.invalidateQueries({ queryKey: ["consumption-rate", params.productId] });
+    },
+  });
+
   const normalize = (s: string) =>
     s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -249,6 +284,44 @@ export default function Inventory() {
       expiration_date: product.expiration_date ? product.expiration_date.split("T")[0] : "",
     });
     setShowAddDialog(true);
+  };
+
+  const openEditLog = (log: InventoryLog) => {
+    setEditingLog(log);
+    setLogAction(log.action);
+    setLogQuantityChange(String(log.quantity_change));
+    setLogPrice(log.price != null ? String(log.price) : "");
+    setLogNotes(log.notes ?? "");
+    setShowEditLogDialog(true);
+  };
+
+  const saveLogEdit = () => {
+    if (!selectedProduct || !editingLog) return;
+    const parsedQuantityChange = parseFloat(logQuantityChange);
+    if (Number.isNaN(parsedQuantityChange)) return;
+    const parsedPrice = logPrice.trim() === "" ? undefined : parseFloat(logPrice);
+    updateLogMutation.mutate({
+      productId: selectedProduct.id,
+      logId: editingLog.id,
+      data: {
+        action: logAction,
+        quantity_change: parsedQuantityChange,
+        price: Number.isNaN(parsedPrice) ? undefined : parsedPrice,
+        notes: logNotes.trim() === "" ? undefined : logNotes.trim(),
+      },
+    });
+  };
+
+  const removeLog = (log: InventoryLog) => {
+    if (!selectedProduct || !window.confirm("Delete this inventory log entry?")) return;
+    deleteLogMutation.mutate({ productId: selectedProduct.id, logId: log.id });
+  };
+
+  const actionLabel = (action: InventoryLog["action"]) => {
+    if (action === "restock") return "Restock";
+    if (action === "consumed") return "Used";
+    if (action === "ended") return "Ended";
+    return "Created";
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -501,7 +574,7 @@ export default function Inventory() {
       </button>
 
       {/* Product Detail Drawer */}
-      <Drawer open={!!selectedProduct && !showRestockDialog && !showConsumeDialog} onOpenChange={open => !open && setSelectedProductId(null)}>
+      <Drawer open={!!selectedProduct && !showRestockDialog && !showConsumeDialog && !showEditLogDialog} onOpenChange={open => !open && setSelectedProductId(null)}>
         <DrawerContent>
           {selectedProduct && (
             <>
@@ -581,6 +654,43 @@ export default function Inventory() {
                       )}
                     </div>
                   )}
+                  <div className="rounded-md border p-3 space-y-2 text-sm">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Inventory log</p>
+                    {isLogsLoading ? (
+                      <p className="text-xs text-muted-foreground">Loading log entries...</p>
+                    ) : productLogs.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No log entries yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {productLogs.map(log => (
+                          <div key={log.id} className="rounded-md border p-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-xs font-medium">
+                                {actionLabel(log.action)} · {new Date(log.created_at).toLocaleString()}
+                              </div>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="outline" onClick={() => openEditLog(log)}>Edit</Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-500"
+                                  onClick={() => removeLog(log)}
+                                  disabled={deleteLogMutation.isPending}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              <span>Quantity change: {log.quantity_change}</span>
+                              {log.price != null && <span> · Total price: ${log.price.toFixed(2)}</span>}
+                            </div>
+                            {log.notes && <p className="text-xs text-muted-foreground mt-1">{log.notes}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </DrawerBody>
               <DrawerFooter>
@@ -695,6 +805,66 @@ export default function Inventory() {
               <Button variant="outline" className="flex-1" onClick={() => setShowConsumeDialog(false)}>Cancel</Button>
               <Button className="flex-1" onClick={() => selectedProduct && consumeMutation.mutate(selectedProduct.id)}>
                 Confirm
+              </Button>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Edit Log Drawer */}
+      <Drawer open={showEditLogDialog} onOpenChange={open => { setShowEditLogDialog(open); if (!open) setEditingLog(null); }}>
+        <DrawerContent>
+          <DrawerHeader><DrawerTitle>Edit inventory log</DrawerTitle></DrawerHeader>
+          <DrawerBody>
+            <div className="space-y-3">
+              <div>
+                <Label>Action</Label>
+                <Select value={logAction} onValueChange={v => setLogAction(v as InventoryLog["action"])}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created">Created</SelectItem>
+                    <SelectItem value="restock">Restock</SelectItem>
+                    <SelectItem value="consumed">Used</SelectItem>
+                    <SelectItem value="ended">Ended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Quantity change</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={logQuantityChange}
+                  onChange={e => setLogQuantityChange(e.target.value.replaceAll(',', '.'))}
+                  onFocus={e => e.target.select()}
+                  onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
+                />
+              </div>
+              <div>
+                <Label>Total price (optional)</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={logPrice}
+                  onChange={e => setLogPrice(e.target.value.replaceAll(',', '.'))}
+                  onFocus={e => e.target.select()}
+                  onKeyDown={e => { if (e.key === ' ') e.preventDefault(); }}
+                />
+              </div>
+              <div>
+                <Label>Notes (optional)</Label>
+                <Input
+                  value={logNotes}
+                  onChange={e => setLogNotes(e.target.value)}
+                />
+              </div>
+            </div>
+          </DrawerBody>
+          <DrawerFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowEditLogDialog(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={saveLogEdit} disabled={updateLogMutation.isPending}>
+                {updateLogMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>
           </DrawerFooter>

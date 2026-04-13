@@ -1,12 +1,12 @@
 import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.database import get_db
 from app.models.product import Product, ProductStatus
 from app.models.inventory_log import InventoryLog, LogAction
 from app.schemas.product import ProductCreate, ProductUpdate, ProductRead
-from app.schemas.inventory_log import InventoryLogRead
+from app.schemas.inventory_log import InventoryLogRead, InventoryLogUpdate
 from app.services.analytics import get_consumption_rate, update_next_purchase_date
 from pydantic import BaseModel
 
@@ -39,6 +39,20 @@ def _to_read(product: Product) -> ProductRead:
         created_at=product.created_at,
         updated_at=product.updated_at,
     )
+
+
+def _recalculate_product_from_logs(product: Product, db: Session) -> None:
+    total_quantity = (
+        db.execute(
+            select(func.coalesce(func.sum(InventoryLog.quantity_change), 0.0)).where(
+                InventoryLog.product_id == product.id
+            )
+        )
+        .scalar_one()
+    )
+    product.current_stock = max(float(total_quantity), 0.0)
+    product.status = _compute_status(product)
+    update_next_purchase_date(product, db)
 
 
 class RestockRequest(BaseModel):
@@ -233,3 +247,48 @@ def product_logs(product_id: int, db: Session = Depends(get_db)):
         .all()
     )
     return logs
+
+
+@router.put("/{product_id}/logs/{log_id}", response_model=InventoryLogRead)
+def update_product_log(
+    product_id: int,
+    log_id: int,
+    payload: InventoryLogUpdate,
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    log = db.get(InventoryLog, log_id)
+    if not log or log.product_id != product_id:
+        raise HTTPException(status_code=404, detail="Log not found.")
+
+    changes = payload.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(log, field, value)
+
+    _recalculate_product_from_logs(product, db)
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+@router.delete("/{product_id}/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product_log(
+    product_id: int,
+    log_id: int,
+    db: Session = Depends(get_db),
+):
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    log = db.get(InventoryLog, log_id)
+    if not log or log.product_id != product_id:
+        raise HTTPException(status_code=404, detail="Log not found.")
+
+    db.delete(log)
+    db.flush()
+    _recalculate_product_from_logs(product, db)
+    db.commit()

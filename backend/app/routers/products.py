@@ -265,9 +265,6 @@ def update_product_log(
         raise HTTPException(status_code=404, detail="Log not found.")
 
     changes = payload.model_dump(exclude_unset=True)
-    if "action" in changes:
-        log.action = changes.pop("action")
-
     for field, value in changes.items():
         setattr(log, field, value)
 

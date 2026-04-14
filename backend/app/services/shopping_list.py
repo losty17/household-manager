@@ -193,9 +193,9 @@ def _avg_daily_consumption_bulk(
         if log.action not in (LogAction.consumed, LogAction.ended):
             continue
 
-        removed_qty = max(-log.quantity_change, 0.0)
-        if removed_qty <= 0:
+        if log.quantity_change >= 0:
             continue
+        removed_qty = -log.quantity_change
 
         current_time = _ensure_utc(log.created_at)
         if pid in previous_removal_time:

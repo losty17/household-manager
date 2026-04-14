@@ -70,13 +70,15 @@ def get_consumption_rate(product_id: int, db: Session) -> dict:
         if log.action not in (LogAction.consumed, LogAction.ended):
             continue
 
-        removed_qty = max(-log.quantity_change, 0.0)
-        if removed_qty <= 0:
+        if log.quantity_change >= 0:
             continue
+        removed_qty = -log.quantity_change
 
         current_time = _ensure_utc(log.created_at)
         if previous_removal_time is not None:
-            delta = (current_time - previous_removal_time).total_seconds() / 86400
+            delta = (
+                current_time - _ensure_utc(previous_removal_time)
+            ).total_seconds() / 86400
             if delta > 0:
                 total_consumed += removed_qty
                 total_days += delta

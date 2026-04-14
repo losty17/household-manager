@@ -7,6 +7,7 @@ from app.models.inventory_log import InventoryLog, LogAction
 from app.schemas.shopping_list import ShoppingListItem, PredictedShoppingListItem
 from app.services.shopping_list import get_shopping_list, predict_shopping_list
 from app.services.analytics import update_next_purchase_date
+from app.number_utils import EPSILON, is_less, round_non_negative_decimal, round_decimal
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/shopping-list", tags=["shopping-list"])
@@ -50,14 +51,19 @@ def bulk_buy(payload: BulkBuyRequest, db: Session = Depends(get_db)):
 
     now = datetime.datetime.now(datetime.timezone.utc)
     for product in products:
-        new_stock = product.min_threshold * 2
-        quantity_change = new_stock - product.current_stock
+        new_stock = round_non_negative_decimal(product.min_threshold * 2)
+        previous_stock = round_non_negative_decimal(product.current_stock)
+        quantity_change = round_decimal(new_stock - previous_stock)
         product.current_stock = new_stock
         product.last_purchased = now
         product.status = (
-            ProductStatus.low_stock
-            if product.current_stock < product.min_threshold
-            else ProductStatus.ok
+            ProductStatus.ended
+            if product.current_stock <= EPSILON
+            else (
+                ProductStatus.low_stock
+                if is_less(product.current_stock, product.min_threshold)
+                else ProductStatus.ok
+            )
         )
         db.add(
             InventoryLog(

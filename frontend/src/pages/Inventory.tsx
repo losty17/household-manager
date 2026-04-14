@@ -14,6 +14,11 @@ import { Plus, Search, Package, RefreshCw, ChevronRight, XCircle, AlertTriangle,
 import ExpiringPanel from "@/components/ExpiringPanel";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
 import ThemeToggle from "@/components/ThemeToggle";
+import {
+  isEffectivelyPositive,
+  parseNormalizedDecimal,
+  parseNormalizedNonNegativeDecimal,
+} from "@/lib/number";
 
 type GroupBy = "none" | "category" | "expiration" | "frequency";
 type SortBy = "name" | "status" | "category" | "expiration" | "frequency" | "updated" | "stock";
@@ -188,8 +193,10 @@ export default function Inventory() {
 
   const restockMutation = useMutation({
     mutationFn: (id: number) => {
-      const parsedPrice = restockPrice.trim() === "" ? undefined : parseFloat(restockPrice);
-      return productsApi.restock(id, { new_stock: parseFloat(restockQty), price: Number.isNaN(parsedPrice) ? undefined : parsedPrice });
+      const newStock = parseNormalizedNonNegativeDecimal(restockQty);
+      if (newStock === undefined) throw new Error("Invalid restock quantity.");
+      const parsedPrice = restockPrice.trim() === "" ? undefined : parseNormalizedNonNegativeDecimal(restockPrice);
+      return productsApi.restock(id, { new_stock: newStock, price: parsedPrice });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
@@ -200,7 +207,13 @@ export default function Inventory() {
   });
 
   const consumeMutation = useMutation({
-    mutationFn: (id: number) => productsApi.consume(id, { quantity: parseFloat(consumeQty) }),
+    mutationFn: (id: number) => {
+      const quantity = parseNormalizedNonNegativeDecimal(consumeQty);
+      if (quantity === undefined || !isEffectivelyPositive(quantity)) {
+        throw new Error("Invalid consume quantity.");
+      }
+      return productsApi.consume(id, { quantity });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["shopping-list"] });
@@ -297,16 +310,16 @@ export default function Inventory() {
 
   const saveLogEdit = () => {
     if (!selectedProduct || !editingLog) return;
-    const parsedQuantityChange = parseFloat(logQuantityChange);
-    if (Number.isNaN(parsedQuantityChange)) return;
-    const parsedPrice = logPrice.trim() === "" ? undefined : parseFloat(logPrice);
+    const parsedQuantityChange = parseNormalizedDecimal(logQuantityChange);
+    if (parsedQuantityChange === undefined) return;
+    const parsedPrice = logPrice.trim() === "" ? undefined : parseNormalizedNonNegativeDecimal(logPrice);
     updateLogMutation.mutate({
       productId: selectedProduct.id,
       logId: editingLog.id,
       data: {
         action: logAction,
         quantity_change: parsedQuantityChange,
-        price: Number.isNaN(parsedPrice) ? undefined : parsedPrice,
+        price: parsedPrice,
         notes: logNotes.trim() === "" ? undefined : logNotes.trim(),
       },
     });
@@ -327,12 +340,16 @@ export default function Inventory() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const categoryId = form.category_id === NEW_CATEGORY_VALUE ? undefined : parseInt(form.category_id);
+    const currentStock = parseNormalizedNonNegativeDecimal(form.current_stock);
+    const minThreshold = parseNormalizedNonNegativeDecimal(form.min_threshold);
+    if (currentStock === undefined || minThreshold === undefined) return;
+    const lastPrice = form.last_price.trim() === "" ? undefined : parseNormalizedNonNegativeDecimal(form.last_price);
     createMutation.mutate({
       name: form.name,
       category_id: categoryId,
-      current_stock: parseFloat(form.current_stock),
-      min_threshold: parseFloat(form.min_threshold),
-      last_price: form.last_price.trim() === "" ? undefined : parseFloat(form.last_price),
+      current_stock: currentStock,
+      min_threshold: minThreshold,
+      last_price: lastPrice,
       unit: form.unit,
       buying_frequency: form.buying_frequency as Product["buying_frequency"],
       expiration_date: form.expiration_date || undefined,

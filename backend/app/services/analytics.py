@@ -64,22 +64,25 @@ def get_consumption_rate(product_id: int, db: Session) -> dict:
 
     total_consumed = 0.0
     total_days = 0.0
-    restock_time: datetime.datetime | None = None
-    restock_qty = 0.0
+    previous_removal_time: datetime.datetime | None = None
 
     for log in logs:
-        if log.action == LogAction.restock:
-            restock_time = log.created_at
-            restock_qty = log.quantity_change
-        elif log.action in (LogAction.consumed, LogAction.ended) and restock_time:
-            end_time = _ensure_utc(log.created_at)
-            start_time = _ensure_utc(restock_time)
-            delta = (end_time - start_time).total_seconds() / 86400
+        if log.action not in (LogAction.consumed, LogAction.ended):
+            continue
+
+        if log.quantity_change >= 0:
+            continue
+        removed_qty = -log.quantity_change
+
+        current_time = _ensure_utc(log.created_at)
+        if previous_removal_time is not None:
+            delta = (
+                current_time - _ensure_utc(previous_removal_time)
+            ).total_seconds() / 86400
             if delta > 0:
-                total_consumed += restock_qty
+                total_consumed += removed_qty
                 total_days += delta
-            restock_time = None
-            restock_qty = 0.0
+        previous_removal_time = current_time
 
     avg_daily = total_consumed / total_days if total_days > 0 else 0.0
 

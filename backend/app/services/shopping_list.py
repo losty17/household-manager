@@ -184,25 +184,26 @@ def _avg_daily_consumption_bulk(
     )
 
     rates: dict[int, float] = {pid: 0.0 for pid in product_ids}
-    restock_time: dict[int, datetime.datetime] = {}
-    restock_qty: dict[int, float] = {}
+    previous_removal_time: dict[int, datetime.datetime] = {}
     total_consumed: dict[int, float] = {pid: 0.0 for pid in product_ids}
     total_days: dict[int, float] = {pid: 0.0 for pid in product_ids}
 
     for log in logs:
         pid = log.product_id
-        if log.action == LogAction.restock:
-            restock_time[pid] = log.created_at
-            restock_qty[pid] = log.quantity_change
-        elif log.action in (LogAction.consumed, LogAction.ended) and pid in restock_time:
-            end_time = _ensure_utc(log.created_at)
-            start_time = _ensure_utc(restock_time[pid])
-            delta = (end_time - start_time).total_seconds() / 86400
+        if log.action not in (LogAction.consumed, LogAction.ended):
+            continue
+
+        if log.quantity_change >= 0:
+            continue
+        removed_qty = -log.quantity_change
+
+        current_time = _ensure_utc(log.created_at)
+        if pid in previous_removal_time:
+            delta = (current_time - _ensure_utc(previous_removal_time[pid])).total_seconds() / 86400
             if delta > 0:
-                total_consumed[pid] = total_consumed.get(pid, 0.0) + restock_qty.get(pid, 0.0)
+                total_consumed[pid] = total_consumed.get(pid, 0.0) + removed_qty
                 total_days[pid] = total_days.get(pid, 0.0) + delta
-            restock_time.pop(pid, None)
-            restock_qty.pop(pid, None)
+        previous_removal_time[pid] = current_time
 
     for pid in product_ids:
         if total_days[pid] > 0:

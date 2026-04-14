@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Tag, ShoppingCart, Bell } from "lucide-react";
+import { Home, Tag, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { shoppingListApi } from "@/lib/api";
 
@@ -15,7 +15,6 @@ export default function BottomNav() {
     { path: "/", label: "Home", icon: Home },
     { path: "/categories", label: "Categories", icon: Tag },
     { path: "/shopping-list", label: "Shopping", icon: ShoppingCart, badge: shoppingList.length },
-    { path: "/push-test", label: "Push", icon: Bell },
   ];
 
   return (

@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerBody, DrawerFooter } from "@/components/ui/drawer";
 import { ShoppingCart, Check, CheckSquare, Square, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import {
+  parseNormalizedNonNegativeDecimal,
+  roundNonNegativeDecimal,
+} from "@/lib/number";
 
 const PREDICT_PERIODS = [
   { label: "1 Week", days: 7 },
@@ -51,7 +55,7 @@ export default function ShoppingList() {
   const singleBuyMutation = useMutation({
     mutationFn: async ({ item, quantity, price }: { item: ShoppingListItem; quantity: number; price?: number }) => {
       await productsApi.restock(item.product_id, {
-        new_stock: item.current_stock + quantity,
+        new_stock: roundNonNegativeDecimal(item.current_stock + quantity),
         price: price,
       });
       return item;
@@ -93,14 +97,14 @@ export default function ShoppingList() {
     4: { label: "Predicted", color: "outline" as const, bg: "bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800" },
   };
 
-  const restockQtyValue = parseFloat(restockQty);
-  const isRestockQtyValid = !isNaN(restockQtyValue) && restockQtyValue >= 0;
-  const restockPriceValue = restockPrice === "" ? undefined : parseFloat(restockPrice);
-  const isRestockPriceValid = restockPrice === "" || (!isNaN(restockPriceValue!) && restockPriceValue! >= 0);
+  const restockQtyValue = parseNormalizedNonNegativeDecimal(restockQty);
+  const isRestockQtyValid = restockQtyValue !== undefined;
+  const restockPriceValue = restockPrice === "" ? undefined : parseNormalizedNonNegativeDecimal(restockPrice);
+  const isRestockPriceValid = restockPrice === "" || restockPriceValue !== undefined;
 
   const handleRestockConfirm = () => {
     if (!restockItem || !isRestockQtyValid || !isRestockPriceValid) return;
-    singleBuyMutation.mutate({ item: restockItem, quantity: restockQtyValue, price: restockPriceValue });
+    singleBuyMutation.mutate({ item: restockItem, quantity: restockQtyValue!, price: restockPriceValue });
     setRestockItem(null);
   };
 

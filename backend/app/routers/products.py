@@ -8,15 +8,23 @@ from app.models.inventory_log import InventoryLog, LogAction
 from app.schemas.product import ProductCreate, ProductUpdate, ProductRead
 from app.schemas.inventory_log import InventoryLogRead, InventoryLogUpdate
 from app.services.analytics import get_consumption_rate, update_next_purchase_date
+from app.number_utils import (
+    EPSILON,
+    is_less,
+    is_positive,
+    round_non_negative_decimal,
+    round_decimal,
+    round_price,
+)
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/products", tags=["products"])
 
 
 def _compute_status(product: Product) -> ProductStatus:
-    if product.current_stock <= 0:
+    if product.current_stock <= EPSILON:
         return ProductStatus.ended
-    if product.current_stock < product.min_threshold:
+    if is_less(product.current_stock, product.min_threshold):
         return ProductStatus.low_stock
     return ProductStatus.ok
 
@@ -50,7 +58,7 @@ def _recalculate_product_from_logs(product: Product, db: Session) -> None:
         )
         .scalar_one()
     )
-    product.current_stock = max(float(total_quantity), 0.0)
+    product.current_stock = round_non_negative_decimal(float(total_quantity))
     product.status = _compute_status(product)
     update_next_purchase_date(product, db)
 
@@ -83,6 +91,9 @@ def list_products(
 @router.post("/", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
 def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
     product = Product(**payload.model_dump())
+    product.current_stock = round_non_negative_decimal(product.current_stock)
+    product.min_threshold = round_non_negative_decimal(product.min_threshold)
+    product.last_price = round_price(product.last_price)
     product.status = _compute_status(product)
     db.add(product)
     db.flush()
@@ -118,6 +129,12 @@ def update_product(
         raise HTTPException(status_code=404, detail="Product not found.")
 
     changes = payload.model_dump(exclude_unset=True)
+    if "current_stock" in changes and changes["current_stock"] is not None:
+        changes["current_stock"] = round_non_negative_decimal(changes["current_stock"])
+    if "min_threshold" in changes and changes["min_threshold"] is not None:
+        changes["min_threshold"] = round_non_negative_decimal(changes["min_threshold"])
+    if "last_price" in changes:
+        changes["last_price"] = round_price(changes["last_price"])
     for field, value in changes.items():
         setattr(product, field, value)
 
@@ -149,18 +166,20 @@ def restock_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
 
-    quantity_change = payload.new_stock - product.current_stock
-    product.current_stock = payload.new_stock
+    previous_stock = round_non_negative_decimal(product.current_stock)
+    new_stock = round_non_negative_decimal(payload.new_stock)
+    quantity_change = round_decimal(new_stock - previous_stock)
+    product.current_stock = new_stock
     product.last_purchased = datetime.datetime.now(datetime.timezone.utc)
     product.status = _compute_status(product)
-    if payload.price is not None and quantity_change > 1e-9:
-        product.last_price = round(payload.price / quantity_change, 6)
+    if payload.price is not None and is_positive(quantity_change):
+        product.last_price = round_price(payload.price / quantity_change)
 
     log = InventoryLog(
         product_id=product.id,
         action=LogAction.restock,
         quantity_change=quantity_change,
-        price=payload.price,
+        price=round_price(payload.price),
         notes=payload.notes,
     )
     db.add(log)
@@ -180,14 +199,14 @@ def mark_product_ended(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
 
-    previous_stock = product.current_stock
+    previous_stock = round_non_negative_decimal(product.current_stock)
     product.current_stock = 0.0
     product.status = ProductStatus.ended
 
     log = InventoryLog(
         product_id=product.id,
         action=LogAction.ended,
-        quantity_change=-previous_stock,
+        quantity_change=round_decimal(-previous_stock),
         notes=notes or "Marked as ended",
     )
     db.add(log)
@@ -207,8 +226,12 @@ def consume_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
 
-    new_stock = max(product.current_stock - quantity, 0.0)
-    quantity_change = new_stock - product.current_stock
+    normalized_quantity = round_non_negative_decimal(quantity)
+    if not is_positive(normalized_quantity):
+        raise HTTPException(status_code=400, detail="Quantity must be greater than zero.")
+    previous_stock = round_non_negative_decimal(product.current_stock)
+    new_stock = round_non_negative_decimal(max(previous_stock - normalized_quantity, 0.0))
+    quantity_change = round_decimal(new_stock - previous_stock)
     product.current_stock = new_stock
     product.status = _compute_status(product)
 
@@ -216,7 +239,7 @@ def consume_product(
         product_id=product.id,
         action=LogAction.consumed,
         quantity_change=quantity_change,
-        notes=notes or f"Removed {quantity} {product.unit}",
+        notes=notes or f"Removed {normalized_quantity} {product.unit}",
     )
     db.add(log)
     db.commit()
@@ -265,6 +288,10 @@ def update_product_log(
         raise HTTPException(status_code=404, detail="Log not found.")
 
     changes = payload.model_dump(exclude_unset=True)
+    if "quantity_change" in changes and changes["quantity_change"] is not None:
+        changes["quantity_change"] = round_decimal(changes["quantity_change"])
+    if "price" in changes:
+        changes["price"] = round_price(changes["price"])
     for field, value in changes.items():
         setattr(log, field, value)
 

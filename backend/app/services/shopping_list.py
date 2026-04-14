@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.models.product import Product, ProductStatus
 from app.models.inventory_log import InventoryLog, LogAction
 from app.schemas.shopping_list import ShoppingListItem, PredictedShoppingListItem
+from app.number_utils import EPSILON, is_less, round_non_negative_decimal, round_decimal
 
 
 def _estimated_price(product: "Product", qty: float) -> float | None:
@@ -33,15 +34,17 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
 
     def suggested_qty(p: Product, priority: int) -> float:
         if priority == 1:
-            return p.min_threshold * 2
-        return max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
+            return round_non_negative_decimal(p.min_threshold * 2)
+        return round_non_negative_decimal(
+            max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
+        )
 
     def expiring_restock_qty(p: Product, priority: int) -> float:
         base_qty = suggested_qty(p, priority)
-        if base_qty > 0:
+        if base_qty > EPSILON:
             return base_qty
-        if p.current_stock > 0:
-            return p.current_stock
+        if p.current_stock > EPSILON:
+            return round_non_negative_decimal(p.current_stock)
         return 1.0
 
     # Priority 1 – ended
@@ -66,7 +69,7 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
 
     # Priority 2 – low stock (not already added)
     for p in products:
-        if p.id not in seen_ids and p.current_stock < p.min_threshold:
+        if p.id not in seen_ids and is_less(p.current_stock, p.min_threshold):
             seen_ids.add(p.id)
             qty = suggested_qty(p, 2)
             items.append(
@@ -140,12 +143,14 @@ def get_shopping_list(db: Session) -> list[ShoppingListItem]:
         for pid in remaining_ids:
             p = product_map[pid]
             rate = rates.get(pid, 0.0)
-            if rate <= 0:
+            if rate <= EPSILON:
                 continue
             days_remaining = p.current_stock / rate
             if days_remaining <= IMMEDIATE_DAYS:
                 seen_ids.add(pid)
-                qty = max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
+                qty = round_non_negative_decimal(
+                    max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
+                )
                 items.append(
                     ShoppingListItem(
                         product_id=p.id,
@@ -193,7 +198,7 @@ def _avg_daily_consumption_bulk(
         if log.action not in (LogAction.consumed, LogAction.ended):
             continue
 
-        if log.quantity_change >= 0:
+        if log.quantity_change >= -EPSILON:
             continue
         removed_qty = -log.quantity_change
 
@@ -233,15 +238,17 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
 
     def suggested_qty(p: Product, priority: int) -> float:
         if priority == 1:
-            return p.min_threshold * 2
-        return max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
+            return round_non_negative_decimal(p.min_threshold * 2)
+        return round_non_negative_decimal(
+            max(p.min_threshold * 2 - p.current_stock, p.min_threshold)
+        )
 
     def expiring_restock_qty(p: Product, priority: int) -> float:
         base_qty = suggested_qty(p, priority)
-        if base_qty > 0:
+        if base_qty > EPSILON:
             return base_qty
-        if p.current_stock > 0:
-            return p.current_stock
+        if p.current_stock > EPSILON:
+            return round_non_negative_decimal(p.current_stock)
         return 1.0
 
     def make_item(
@@ -251,7 +258,11 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
         days_until: float,
         qty: float | None = None,
     ) -> PredictedShoppingListItem:
-        actual_qty = qty if qty is not None else suggested_qty(p, priority)
+        actual_qty = (
+            round_non_negative_decimal(qty)
+            if qty is not None
+            else suggested_qty(p, priority)
+        )
         needed_at = today + datetime.timedelta(days=days_until)
         return PredictedShoppingListItem(
             product_id=p.id,
@@ -276,7 +287,7 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
 
     # Priority 2 – already low stock
     for p in products:
-        if p.id not in seen_ids and p.current_stock < p.min_threshold:
+        if p.id not in seen_ids and is_less(p.current_stock, p.min_threshold):
             seen_ids.add(p.id)
             items.append(
                 make_item(
@@ -382,21 +393,23 @@ def predict_shopping_list(db: Session, days: int) -> list[PredictedShoppingListI
         for pid in remaining_ids:
             p = product_map[pid]
             rate = rates.get(pid, 0.0)
-            if rate <= 0:
+            if rate <= EPSILON:
                 continue
             days_remaining = p.current_stock / rate
             if days_remaining <= days:
                 # Suggest enough to cover the entire prediction window:
                 # units needed over `days` days minus what's currently on hand,
                 # plus min_threshold as a safety buffer.
-                suggested = max(rate * days - p.current_stock + p.min_threshold, p.min_threshold)
+                suggested = round_non_negative_decimal(
+                    max(rate * days - p.current_stock + p.min_threshold, p.min_threshold)
+                )
                 items.append(
                     make_item(
                         p,
                         4,
                         f"Stock will run out in ~{round(days_remaining)} day(s) at current usage rate",
                         days_remaining,
-                        round(suggested, 2),
+                        round_decimal(suggested, 2),
                     )
                 )
 

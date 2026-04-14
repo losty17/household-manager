@@ -1,3 +1,4 @@
+// Keep this aligned with backend/app/number_utils.py EPSILON.
 export const DECIMAL_EPSILON = 1e-9;
 export const DEFAULT_DECIMAL_PLACES = 6;
 
@@ -24,6 +25,6 @@ export function parseNormalizedNonNegativeDecimal(value: string): number | undef
   return roundNonNegativeDecimal(parsed);
 }
 
-export function isPositiveDecimal(value: number): boolean {
+export function isEffectivelyPositive(value: number): boolean {
   return value > DECIMAL_EPSILON;
 }

@@ -11,6 +11,7 @@ from app.services.analytics import get_consumption_rate, update_next_purchase_da
 from app.number_utils import (
     EPSILON,
     is_less,
+    is_non_negative,
     is_positive,
     round_non_negative_decimal,
     round_decimal,
@@ -91,6 +92,18 @@ def list_products(
 @router.post("/", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
 def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
     product = Product(**payload.model_dump())
+    if not is_non_negative(product.current_stock):
+        raise HTTPException(
+            status_code=400, detail="current_stock must be greater than or equal to zero."
+        )
+    if not is_non_negative(product.min_threshold):
+        raise HTTPException(
+            status_code=400, detail="min_threshold must be greater than or equal to zero."
+        )
+    if product.last_price is not None and not is_non_negative(product.last_price):
+        raise HTTPException(
+            status_code=400, detail="last_price must be greater than or equal to zero."
+        )
     product.current_stock = round_non_negative_decimal(product.current_stock)
     product.min_threshold = round_non_negative_decimal(product.min_threshold)
     product.last_price = round_price(product.last_price)
@@ -130,9 +143,29 @@ def update_product(
 
     changes = payload.model_dump(exclude_unset=True)
     if "current_stock" in changes and changes["current_stock"] is not None:
-        changes["current_stock"] = round_non_negative_decimal(changes["current_stock"])
+        current_stock = changes["current_stock"]
+        if not is_non_negative(current_stock):
+            raise HTTPException(
+                status_code=400,
+                detail="current_stock must be greater than or equal to zero.",
+            )
+        changes["current_stock"] = round_non_negative_decimal(current_stock)
     if "min_threshold" in changes and changes["min_threshold"] is not None:
-        changes["min_threshold"] = round_non_negative_decimal(changes["min_threshold"])
+        min_threshold = changes["min_threshold"]
+        if not is_non_negative(min_threshold):
+            raise HTTPException(
+                status_code=400,
+                detail="min_threshold must be greater than or equal to zero.",
+            )
+        changes["min_threshold"] = round_non_negative_decimal(min_threshold)
+    if (
+        "last_price" in changes
+        and changes["last_price"] is not None
+        and not is_non_negative(changes["last_price"])
+    ):
+        raise HTTPException(
+            status_code=400, detail="last_price must be greater than or equal to zero."
+        )
     if "last_price" in changes:
         changes["last_price"] = round_price(changes["last_price"])
     for field, value in changes.items():
@@ -165,6 +198,14 @@ def restock_product(
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
+    if not is_non_negative(payload.new_stock):
+        raise HTTPException(
+            status_code=400, detail="new_stock must be greater than or equal to zero."
+        )
+    if payload.price is not None and not is_non_negative(payload.price):
+        raise HTTPException(
+            status_code=400, detail="price must be greater than or equal to zero."
+        )
 
     previous_stock = round_non_negative_decimal(product.current_stock)
     new_stock = round_non_negative_decimal(payload.new_stock)
@@ -228,7 +269,7 @@ def consume_product(
 
     normalized_quantity = round_non_negative_decimal(quantity)
     if not is_positive(normalized_quantity):
-        raise HTTPException(status_code=400, detail="Quantity must be greater than zero.")
+        raise HTTPException(status_code=400, detail="quantity must be greater than zero.")
     previous_stock = round_non_negative_decimal(product.current_stock)
     new_stock = round_non_negative_decimal(max(previous_stock - normalized_quantity, 0.0))
     quantity_change = round_decimal(new_stock - previous_stock)
@@ -288,6 +329,14 @@ def update_product_log(
         raise HTTPException(status_code=404, detail="Log not found.")
 
     changes = payload.model_dump(exclude_unset=True)
+    if (
+        "price" in changes
+        and changes["price"] is not None
+        and not is_non_negative(changes["price"])
+    ):
+        raise HTTPException(
+            status_code=400, detail="price must be greater than or equal to zero."
+        )
     if "quantity_change" in changes and changes["quantity_change"] is not None:
         changes["quantity_change"] = round_decimal(changes["quantity_change"])
     if "price" in changes:

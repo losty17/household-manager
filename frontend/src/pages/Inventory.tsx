@@ -15,7 +15,7 @@ import ExpiringPanel from "@/components/ExpiringPanel";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
-  isPositiveDecimal,
+  isEffectivelyPositive,
   parseNormalizedDecimal,
   parseNormalizedNonNegativeDecimal,
 } from "@/lib/number";
@@ -209,7 +209,7 @@ export default function Inventory() {
   const consumeMutation = useMutation({
     mutationFn: (id: number) => {
       const quantity = parseNormalizedNonNegativeDecimal(consumeQty);
-      if (quantity === undefined || !isPositiveDecimal(quantity)) {
+      if (quantity === undefined || !isEffectivelyPositive(quantity)) {
         throw new Error("Invalid consume quantity.");
       }
       return productsApi.consume(id, { quantity });

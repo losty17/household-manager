@@ -1,3 +1,9 @@
+"""Numeric helpers for stock/price normalization.
+
+EPSILON smooths tiny floating-point artifacts around zero.
+STOCK_DECIMALS / PRICE_DECIMALS keep persisted values stable and predictable.
+"""
+
 EPSILON = 1e-9
 STOCK_DECIMALS = 6
 PRICE_DECIMALS = 6
@@ -10,7 +16,7 @@ def round_decimal(value: float, decimals: int = STOCK_DECIMALS) -> float:
 
 def round_non_negative_decimal(value: float, decimals: int = STOCK_DECIMALS) -> float:
     normalized = round_decimal(value, decimals=decimals)
-    return 0.0 if normalized < EPSILON else normalized
+    return max(normalized, 0.0)
 
 
 def round_price(value: float | None) -> float | None:
@@ -21,6 +27,10 @@ def round_price(value: float | None) -> float | None:
 
 def is_positive(value: float) -> bool:
     return value > EPSILON
+
+
+def is_non_negative(value: float) -> bool:
+    return value >= -EPSILON
 
 
 def is_less(a: float, b: float) -> bool:
